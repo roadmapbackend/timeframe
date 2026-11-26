@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Clock, CheckSquare, BarChart3, Play, Square, Plus } from 'lucide-react';
+import { Search, Clock, CheckSquare, BarChart3, FileText, Play, Square, Plus } from 'lucide-react';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -66,6 +66,13 @@ export function CommandPalette({
         shortcut: '',
         icon: BarChart3,
         run: () => router.push('/analytics'),
+      },
+      {
+        id: 'nav-review',
+        label: 'Go to Weekly Review',
+        shortcut: '',
+        icon: FileText,
+        run: () => router.push('/review'),
       },
       ...recentTasks.map((t, i) => ({
         id: `recent-${i}`,

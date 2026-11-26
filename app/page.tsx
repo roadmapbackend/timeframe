@@ -131,13 +131,27 @@ export default function DashboardPage() {
             <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
               Timeframe
             </span>
-            <Link
-              href="/analytics"
-              className="inline-flex items-center space-x-1 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 px-2.5 py-1 rounded"
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>Analytics</span>
-            </Link>
+            <div className="flex items-center space-x-1.5">
+              <Link
+                href="/tasks"
+                className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded"
+              >
+                Tasks
+              </Link>
+              <Link
+                href="/analytics"
+                className="inline-flex items-center space-x-1 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded"
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Analytics</span>
+              </Link>
+              <Link
+                href="/review"
+                className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded"
+              >
+                Review
+              </Link>
+            </div>
           </div>
 
           <TrackerBar

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Clock, BarChart3, CheckSquare, Database, ShieldCheck, LogOut } from 'lucide-react';
+import { Clock, BarChart3, CheckSquare, FileText, Database, ShieldCheck, LogOut } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 interface SidebarProps {
@@ -18,6 +18,7 @@ export function Sidebar({ isCloudConnected }: SidebarProps) {
     { label: 'Ledger', href: '/', icon: Clock },
     { label: 'Tasks & Projects', href: '/tasks', icon: CheckSquare },
     { label: 'Analytics', href: '/analytics', icon: BarChart3 },
+    { label: 'Weekly Review', href: '/review', icon: FileText },
   ];
 
   const handleSignOut = async () => {

@@ -1,9 +1,25 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Time Tracker',
-  description: 'Minimalist, ultra-clean time tracking application',
+  title: 'Timeframe',
+  description: 'Minimalist, Notion-style daily time ledger',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Timeframe',
+  },
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#191919' },
+  ],
 };
 
 export default function RootLayout({

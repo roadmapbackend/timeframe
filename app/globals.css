@@ -44,3 +44,16 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(120, 119, 116, 0.4);
 }
+
+@media print {
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+}
