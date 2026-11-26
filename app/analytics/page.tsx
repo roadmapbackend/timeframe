@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
 import { SummaryCards } from '@/components/analytics/SummaryCards';
-import { MinimalBarChart } from '@/components/analytics/MinimalBarChart';
+import { ProjectTaskBreakdown } from '@/components/analytics/ProjectTaskBreakdown';
+import { StackedDailyChart } from '@/components/analytics/StackedDailyChart';
 import { useTimeEntries } from '@/hooks/useTimeEntries';
 import { useProjects } from '@/hooks/useProjects';
+import { useTasks } from '@/hooks/useTasks';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { TimePeriod } from '@/types';
 import { ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
@@ -15,10 +17,11 @@ import { ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 export default function AnalyticsPage() {
   const { entries, isCloudConnected } = useTimeEntries();
   const { projects } = useProjects();
+  const { tasks } = useTasks();
   const [period, setPeriod] = useState<TimePeriod>('week');
   const [offset, setOffset] = useState<number>(0);
 
-  const summary = useAnalytics(entries, period, offset);
+  const summary = useAnalytics(entries, period, offset, projects, tasks);
 
   const periods: { label: string; value: TimePeriod }[] = [
     { label: 'Day', value: 'day' },
@@ -97,7 +100,13 @@ export default function AnalyticsPage() {
 
           <SummaryCards summary={summary} period={period} />
 
-          <MinimalBarChart summary={summary} projects={projects} />
+          {/* Breakdown table first */}
+          <ProjectTaskBreakdown items={summary.projectBreakdown} />
+
+          {/* One stacked bar chart per day for week and month views */}
+          {(period === 'week' || period === 'month') && (
+            <StackedDailyChart days={summary.dailyStacked} />
+          )}
         </main>
       </div>
     </div>
