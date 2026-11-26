@@ -323,6 +323,119 @@ export function useTimeEntries() {
     }
   }, []);
 
+  // Split an entry into two consecutive entries
+  const splitEntry = useCallback(
+    async (
+      entry: TimeEntry,
+      firstDurationSeconds: number,
+      firstDescription: string,
+      secondDescription: string
+    ) => {
+      const total = entry.duration_seconds || 0;
+      if (firstDurationSeconds <= 0 || firstDurationSeconds >= total) return;
+
+      const secondDurationSeconds = total - firstDurationSeconds;
+      const startMs = new Date(entry.started_at).getTime();
+      const splitMs = startMs + firstDurationSeconds * 1000;
+      const splitIso = new Date(splitMs).toISOString();
+      const endIso = entry.ended_at || new Date(startMs + total * 1000).toISOString();
+
+      const secondEntry: TimeEntry = {
+        id:
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `entry-${Date.now()}-b`,
+        task_id: entry.task_id,
+        project_id: entry.project_id,
+        description: secondDescription.trim() || entry.description,
+        started_at: splitIso,
+        ended_at: endIso,
+        duration_seconds: secondDurationSeconds,
+        source: 'adjusted',
+        created_at: new Date().toISOString(),
+      };
+
+      const firstUpdates: Partial<TimeEntry> = {
+        description: firstDescription.trim() || entry.description,
+        ended_at: splitIso,
+        duration_seconds: firstDurationSeconds,
+        source: 'adjusted',
+      };
+
+      setEntries((prev) => {
+        const updated = prev.map((e) =>
+          e.id === entry.id ? { ...e, ...firstUpdates } : e
+        );
+        const next = [secondEntry, ...updated].sort(
+          (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+        );
+        persistLocal(next);
+        return next;
+      });
+
+      const supabase = createClient();
+      if (supabase) {
+        await supabase.from('time_entries').update(firstUpdates).eq('id', entry.id);
+        await supabase.from('time_entries').insert([
+          {
+            id: secondEntry.id,
+            task_id: secondEntry.task_id,
+            project_id: secondEntry.project_id,
+            description: secondEntry.description,
+            started_at: secondEntry.started_at,
+            ended_at: secondEntry.ended_at,
+            duration_seconds: secondEntry.duration_seconds,
+            source: secondEntry.source,
+          },
+        ]);
+      }
+    },
+    []
+  );
+
+  // Merge two entries (keeps the newer entry updated with combined duration and deletes the older one)
+  const mergeEntries = useCallback(
+    async (newer: TimeEntry, older: TimeEntry) => {
+      const combinedSeconds =
+        (newer.duration_seconds || 0) + (older.duration_seconds || 0);
+      const earliestStart =
+        new Date(older.started_at).getTime() < new Date(newer.started_at).getTime()
+          ? older.started_at
+          : newer.started_at;
+      const latestEnd =
+        newer.ended_at ||
+        new Date(new Date(earliestStart).getTime() + combinedSeconds * 1000).toISOString();
+
+      const mergedDesc =
+        newer.description === older.description
+          ? newer.description
+          : `${older.description} + ${newer.description}`;
+
+      const updates: Partial<TimeEntry> = {
+        description: mergedDesc,
+        started_at: earliestStart,
+        ended_at: latestEnd,
+        duration_seconds: combinedSeconds,
+        source: 'adjusted',
+      };
+
+      setEntries((prev) => {
+        const next = prev
+          .filter((e) => e.id !== older.id)
+          .map((e) => (e.id === newer.id ? { ...e, ...updates } : e));
+        persistLocal(next);
+        return next;
+      });
+
+      const supabase = createClient();
+      if (supabase) {
+        await supabase.from('time_entries').update(updates).eq('id', newer.id);
+        await supabase.from('time_entries').delete().eq('id', older.id);
+      }
+    },
+    []
+  );
+
   return {
     entries: completedEntries,
     runningEntry,
@@ -336,6 +449,8 @@ export function useTimeEntries() {
     updateEntry,
     deleteEntry,
     restoreEntry,
+    splitEntry,
+    mergeEntries,
     refreshEntries: loadEntries,
   };
 }

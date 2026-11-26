@@ -4,13 +4,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
+import { CommandPalette } from '@/components/layout/CommandPalette';
 import { TrackerBar } from '@/components/tracker/TrackerBar';
 import { EntryTable } from '@/components/table/EntryTable';
 import { ManualEntryModal } from '@/components/tracker/ManualEntryModal';
+import { SplitEntryModal } from '@/components/tracker/SplitEntryModal';
 import { useTimeEntries } from '@/hooks/useTimeEntries';
 import { useProjects } from '@/hooks/useProjects';
 import { TimeEntry } from '@/types';
-import { Play, BarChart3, RotateCcw } from 'lucide-react';
+import { Play, BarChart3, RotateCcw, Command } from 'lucide-react';
 
 export default function DashboardPage() {
   const {
@@ -26,38 +28,67 @@ export default function DashboardPage() {
     updateEntry,
     deleteEntry,
     restoreEntry,
+    splitEntry,
+    mergeEntries,
   } = useTimeEntries();
 
   const { projects, createProject } = useProjects();
 
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [splitTarget, setSplitTarget] = useState<TimeEntry | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editTrigger, setEditTrigger] = useState<{ id: string; nonce: number } | null>(
+    null
+  );
   const [gapRange, setGapRange] = useState<{
     startedAt: string;
     endedAt: string;
   } | null>(null);
   const [undoEntry, setUndoEntry] = useState<TimeEntry | null>(null);
 
-  // Keyboard shortcuts when not focused in an input: T = toggle timer, M = manual modal
+  // Global keyboard shortcuts: ⌘K palette, T timer, M manual, ↑/↓ select row, E edit row
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsPaletteOpen((v) => !v);
+        return;
+      }
+
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      if (e.key.toLowerCase() === 't') {
+      const key = e.key.toLowerCase();
+      if (key === 't') {
         e.preventDefault();
         if (isRunning) stopTimer();
         else startTimer('Deep Work', null);
-      } else if (e.key.toLowerCase() === 'm') {
+      } else if (key === 'm') {
         e.preventDefault();
         setIsManualModalOpen(true);
+      } else if (e.key === 'ArrowDown' || key === 'j') {
+        if (entries.length === 0) return;
+        e.preventDefault();
+        const idx = entries.findIndex((item) => item.id === selectedId);
+        const nextIdx = idx < 0 ? 0 : Math.min(entries.length - 1, idx + 1);
+        setSelectedId(entries[nextIdx].id);
+      } else if (e.key === 'ArrowUp' || key === 'k') {
+        if (entries.length === 0) return;
+        e.preventDefault();
+        const idx = entries.findIndex((item) => item.id === selectedId);
+        const prevIdx = idx <= 0 ? 0 : idx - 1;
+        setSelectedId(entries[prevIdx].id);
+      } else if (key === 'e' && selectedId) {
+        e.preventDefault();
+        setEditTrigger({ id: selectedId, nonce: Date.now() });
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isRunning, startTimer, stopTimer]);
+  }, [isRunning, startTimer, stopTimer, entries, selectedId]);
 
-  // Recent unique task titles for quick 1-click resume
   const recentTasks = useMemo(() => {
     const seen = new Set<string>();
     const list: { description: string; projectId: string | null }[] = [];
@@ -122,22 +153,35 @@ export default function DashboardPage() {
             onCreateProject={createProject}
           />
 
-          {/* Quick-resume recent tasks */}
-          {!isRunning && recentTasks.length > 0 && (
-            <div className="flex items-center flex-wrap gap-1.5 text-[11px]">
-              <span className="text-zinc-400 mr-1">Resume:</span>
-              {recentTasks.map((t) => (
-                <button
-                  key={t.description}
-                  onClick={() => startTimer(t.description, t.projectId)}
-                  className="inline-flex items-center space-x-1 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <Play className="w-2.5 h-2.5 fill-current text-zinc-400" />
-                  <span className="max-w-[140px] truncate">{t.description}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Quick-resume recent tasks + keyboard hint */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            {!isRunning && recentTasks.length > 0 ? (
+              <div className="flex items-center flex-wrap gap-1.5 text-[11px]">
+                <span className="text-zinc-400 mr-1">Resume:</span>
+                {recentTasks.map((t) => (
+                  <button
+                    key={t.description}
+                    onClick={() => startTimer(t.description, t.projectId)}
+                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    <Play className="w-2.5 h-2.5 fill-current text-zinc-400" />
+                    <span className="max-w-[140px] truncate">{t.description}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div />
+            )}
+
+            <button
+              onClick={() => setIsPaletteOpen(true)}
+              className="hidden sm:inline-flex items-center space-x-1 text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              title="Open command palette (⌘K)"
+            >
+              <Command className="w-3 h-3" />
+              <span>K palette · T timer · M manual · E edit</span>
+            </button>
+          </div>
 
           <div className="space-y-3 pt-1">
             {isLoading ? (
@@ -148,9 +192,14 @@ export default function DashboardPage() {
               <EntryTable
                 entries={entries}
                 projects={projects}
+                selectedId={selectedId}
+                editTrigger={editTrigger}
+                onSelectEntry={setSelectedId}
                 onUpdateEntry={updateEntry}
                 onDeleteEntry={handleDelete}
                 onFillGap={(gap) => setGapRange(gap)}
+                onSplitEntry={(entry) => setSplitTarget(entry)}
+                onMergeEntries={mergeEntries}
                 onCreateProject={createProject}
               />
             )}
@@ -165,6 +214,24 @@ export default function DashboardPage() {
         defaultRange={gapRange}
         onClose={() => setGapRange(null)}
         onSubmit={addManualEntry}
+      />
+
+      {/* Split entry modal */}
+      <SplitEntryModal
+        entry={splitTarget}
+        onClose={() => setSplitTarget(null)}
+        onSplit={splitEntry}
+      />
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={isPaletteOpen}
+        onClose={() => setIsPaletteOpen(false)}
+        isRunning={isRunning}
+        onToggleTimer={() => (isRunning ? stopTimer() : startTimer('Deep Work', null))}
+        onOpenManual={() => setIsManualModalOpen(true)}
+        recentTasks={recentTasks}
+        onStartTask={(desc, pid) => startTimer(desc, pid)}
       />
 
       {/* Undo toast */}

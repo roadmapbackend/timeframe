@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { TimeEntry, Project } from '@/types';
 import {
   formatReadableDuration,
@@ -8,15 +8,20 @@ import {
   getLocalDayKey,
   parseDurationInput,
 } from '@/lib/utils';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Scissors, GitMerge } from 'lucide-react';
 import { ProjectDotPicker } from '@/components/projects/ProjectDotPicker';
 
 interface EntryTableProps {
   entries: TimeEntry[];
   projects: Project[];
+  selectedId?: string | null;
+  editTrigger?: { id: string; nonce: number } | null;
+  onSelectEntry?: (id: string) => void;
   onUpdateEntry: (id: string, updates: Partial<TimeEntry>) => Promise<void>;
   onDeleteEntry: (id: string) => Promise<void>;
   onFillGap: (gap: { startedAt: string; endedAt: string }) => void;
+  onSplitEntry?: (entry: TimeEntry) => void;
+  onMergeEntries?: (newer: TimeEntry, older: TimeEntry) => Promise<void>;
   onCreateProject?: (name: string) => Promise<Project | null>;
 }
 
@@ -35,9 +40,14 @@ const MIN_GAP_SECONDS = 15 * 60; // 15m
 export function EntryTable({
   entries,
   projects,
+  selectedId,
+  editTrigger,
+  onSelectEntry,
   onUpdateEntry,
   onDeleteEntry,
   onFillGap,
+  onSplitEntry,
+  onMergeEntries,
   onCreateProject,
 }: EntryTableProps) {
   const [editingField, setEditingField] = useState<{
@@ -45,6 +55,15 @@ export function EntryTable({
     field: 'description' | 'duration';
   } | null>(null);
   const [editValue, setEditValue] = useState('');
+
+  useEffect(() => {
+    if (!editTrigger) return;
+    const target = entries.find((e) => e.id === editTrigger.id);
+    if (target) {
+      setEditingField({ id: target.id, field: 'description' });
+      setEditValue(target.description);
+    }
+  }, [editTrigger, entries]);
 
   const projectMap = useMemo(() => {
     const map = new Map<string, Project>();
@@ -215,11 +234,26 @@ export function EntryTable({
               const isEditingDur =
                 editingField?.id === entry.id &&
                 editingField.field === 'duration';
+              const isSelected = selectedId === entry.id;
+
+              // Find older entry in the same day group for Merge
+              const nextEntryItem = group.items
+                .slice(idx + 1)
+                .find((it) => it.kind === 'entry');
+              const olderEntry =
+                nextEntryItem && nextEntryItem.kind === 'entry'
+                  ? nextEntryItem.entry
+                  : null;
 
               return (
                 <div
                   key={entry.id}
-                  className="grid grid-cols-12 items-center px-3.5 py-2 text-xs hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors group"
+                  onClick={() => onSelectEntry?.(entry.id)}
+                  className={`grid grid-cols-12 items-center px-3.5 py-2 text-xs transition-colors group ${
+                    isSelected
+                      ? 'bg-zinc-100/90 dark:bg-zinc-800/70'
+                      : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40'
+                  }`}
                 >
                   {/* Title + Inline Project Dot Picker */}
                   <div className="col-span-6 sm:col-span-6 pr-2 flex items-center space-x-2 min-w-0">
@@ -269,8 +303,8 @@ export function EntryTable({
                     </span>
                   </div>
 
-                  {/* Editable Duration + Delete */}
-                  <div className="col-span-3 sm:col-span-2 text-right font-mono tabular-nums flex items-center justify-end space-x-1.5">
+                  {/* Duration and Actions */}
+                  <div className="col-span-3 sm:col-span-2 text-right font-mono tabular-nums flex items-center justify-end space-x-1">
                     {isEditingDur ? (
                       <input
                         type="text"
@@ -293,15 +327,44 @@ export function EntryTable({
                             formatReadableDuration(entry.duration_seconds || 0)
                           )
                         }
-                        className="text-zinc-800 dark:text-zinc-200 font-medium cursor-text hover:underline decoration-zinc-300"
+                        className="text-zinc-800 dark:text-zinc-200 font-medium cursor-text hover:underline decoration-zinc-300 mr-1"
                         title="Click to edit duration (e.g. 1h45, 1:45, 90m)"
                       >
                         {formatReadableDuration(entry.duration_seconds || 0)}
                       </span>
                     )}
 
+                    {onSplitEntry && (entry.duration_seconds || 0) >= 120 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSplitEntry(entry);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-opacity rounded"
+                        title="Split entry"
+                      >
+                        <Scissors className="w-3 h-3" />
+                      </button>
+                    )}
+
+                    {onMergeEntries && olderEntry && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMergeEntries(entry, olderEntry);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-opacity rounded"
+                        title="Merge with entry below"
+                      >
+                        <GitMerge className="w-3 h-3" />
+                      </button>
+                    )}
+
                     <button
-                      onClick={() => onDeleteEntry(entry.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteEntry(entry.id);
+                      }}
                       className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-rose-500 transition-opacity rounded"
                       title="Delete entry"
                     >
