@@ -107,7 +107,11 @@ export function useTimeEntries() {
 
   // Start server-synced timer (stops any existing running entry first if needed)
   const startTimer = useCallback(
-    async (description: string, projectId: string | null = null) => {
+    async (
+      description: string,
+      projectId: string | null = null,
+      taskId: string | null = null
+    ) => {
       const nowIso = new Date().toISOString();
 
       // If one is already running, close it cleanly first
@@ -130,7 +134,7 @@ export function useTimeEntries() {
           typeof crypto !== 'undefined' && crypto.randomUUID
             ? crypto.randomUUID()
             : `entry-${Date.now()}`,
-        task_id: null,
+        task_id: taskId,
         project_id: projectId,
         description: description.trim() || 'Deep Work',
         started_at: nowIso,
@@ -163,6 +167,7 @@ export function useTimeEntries() {
         await supabase.from('time_entries').insert([
           {
             id: newRunning.id,
+            task_id: newRunning.task_id,
             description: newRunning.description,
             project_id: newRunning.project_id,
             started_at: newRunning.started_at,

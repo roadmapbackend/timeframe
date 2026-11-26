@@ -94,10 +94,26 @@ export function useProjects() {
     [projects.length]
   );
 
+  const updateProject = useCallback(async (id: string, updates: Partial<Project>) => {
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, ...updates } : p));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(next));
+      }
+      return next;
+    });
+
+    const supabase = createClient();
+    if (supabase) {
+      await supabase.from('projects').update(updates).eq('id', id);
+    }
+  }, []);
+
   return {
     projects,
     activeProjects: projects.filter((p) => !p.is_archived),
     createProject,
+    updateProject,
     refreshProjects: loadProjects,
   };
 }

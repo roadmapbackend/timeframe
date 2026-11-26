@@ -9,6 +9,7 @@ import {
   parseDurationInput,
 } from '@/lib/utils';
 import { Trash2, Plus } from 'lucide-react';
+import { ProjectDotPicker } from '@/components/projects/ProjectDotPicker';
 
 interface EntryTableProps {
   entries: TimeEntry[];
@@ -16,6 +17,7 @@ interface EntryTableProps {
   onUpdateEntry: (id: string, updates: Partial<TimeEntry>) => Promise<void>;
   onDeleteEntry: (id: string) => Promise<void>;
   onFillGap: (gap: { startedAt: string; endedAt: string }) => void;
+  onCreateProject?: (name: string) => Promise<Project | null>;
 }
 
 interface DayGroup {
@@ -36,6 +38,7 @@ export function EntryTable({
   onUpdateEntry,
   onDeleteEntry,
   onFillGap,
+  onCreateProject,
 }: EntryTableProps) {
   const [editingField, setEditingField] = useState<{
     id: string;
@@ -218,20 +221,14 @@ export function EntryTable({
                   key={entry.id}
                   className="grid grid-cols-12 items-center px-3.5 py-2 text-xs hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors group"
                 >
-                  {/* Title + Project Dot */}
+                  {/* Title + Inline Project Dot Picker */}
                   <div className="col-span-6 sm:col-span-6 pr-2 flex items-center space-x-2 min-w-0">
-                    {proj && (
-                      <span
-                        className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 shrink-0"
-                        title={proj.name}
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{ backgroundColor: proj.color }}
-                        />
-                        <span className="max-w-[72px] truncate">{proj.name}</span>
-                      </span>
-                    )}
+                    <ProjectDotPicker
+                      projects={projects}
+                      selectedProjectId={entry.project_id}
+                      onSelect={(pid) => onUpdateEntry(entry.id, { project_id: pid })}
+                      onCreateProject={onCreateProject}
+                    />
 
                     {isEditingDesc ? (
                       <input

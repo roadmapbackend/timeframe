@@ -151,6 +151,7 @@ export default function DashboardPage() {
                 onUpdateEntry={updateEntry}
                 onDeleteEntry={handleDelete}
                 onFillGap={(gap) => setGapRange(gap)}
+                onCreateProject={createProject}
               />
             )}
           </div>
