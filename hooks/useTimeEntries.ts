@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { TimeEntry } from '@/types';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { TimeEntry, EntrySource } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import { STORAGE_KEY_ENTRIES } from '@/lib/constants';
 
@@ -9,8 +9,34 @@ export function useTimeEntries() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCloudConnected, setIsCloudConnected] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // Load initial data
+  const runningEntry = useMemo(
+    () => entries.find((e) => e.ended_at === null) || null,
+    [entries]
+  );
+
+  const completedEntries = useMemo(
+    () => entries.filter((e) => e.ended_at !== null),
+    [entries]
+  );
+
+  // Live ticker for the server-synced running entry
+  useEffect(() => {
+    if (!runningEntry) {
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const startMs = new Date(runningEntry.started_at).getTime();
+    const tick = () => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [runningEntry]);
+
   const loadEntries = useCallback(async () => {
     setIsLoading(true);
     const supabase = createClient();
@@ -25,7 +51,6 @@ export function useTimeEntries() {
         if (!error && data) {
           setEntries(data as TimeEntry[]);
           setIsCloudConnected(true);
-          // Sync backup locally
           if (typeof window !== 'undefined') {
             localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(data));
           }
@@ -37,7 +62,6 @@ export function useTimeEntries() {
       }
     }
 
-    // Fallback to local storage
     if (typeof window !== 'undefined') {
       const cached = localStorage.getItem(STORAGE_KEY_ENTRIES);
       if (cached) {
@@ -52,112 +76,261 @@ export function useTimeEntries() {
     setIsLoading(false);
   }, []);
 
+  // Initial load + Supabase Realtime subscription for instant cross-device sync
   useEffect(() => {
     loadEntries();
+
+    const supabase = createClient();
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel('time_entries_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'time_entries' },
+        () => {
+          loadEntries();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [loadEntries]);
 
-  // Add entry (handles both manual & timer stops)
-  const addEntry = useCallback(
+  const persistLocal = (next: TimeEntry[]) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(next));
+    }
+  };
+
+  // Start server-synced timer (stops any existing running entry first if needed)
+  const startTimer = useCallback(
+    async (description: string, projectId: string | null = null) => {
+      const nowIso = new Date().toISOString();
+
+      // If one is already running, close it cleanly first
+      if (runningEntry) {
+        const dur = Math.max(
+          1,
+          Math.floor((Date.now() - new Date(runningEntry.started_at).getTime()) / 1000)
+        );
+        const supabase = createClient();
+        if (supabase) {
+          await supabase
+            .from('time_entries')
+            .update({ ended_at: nowIso, duration_seconds: dur })
+            .eq('id', runningEntry.id);
+        }
+      }
+
+      const newRunning: TimeEntry = {
+        id:
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `entry-${Date.now()}`,
+        task_id: null,
+        project_id: projectId,
+        description: description.trim() || 'Deep Work',
+        started_at: nowIso,
+        ended_at: null,
+        duration_seconds: null,
+        source: 'timer',
+        created_at: nowIso,
+      };
+
+      setEntries((prev) => {
+        const cleaned = prev.map((e) =>
+          e.ended_at === null
+            ? {
+                ...e,
+                ended_at: nowIso,
+                duration_seconds: Math.max(
+                  1,
+                  Math.floor((Date.now() - new Date(e.started_at).getTime()) / 1000)
+                ),
+              }
+            : e
+        );
+        const next = [newRunning, ...cleaned];
+        persistLocal(next);
+        return next;
+      });
+
+      const supabase = createClient();
+      if (supabase) {
+        await supabase.from('time_entries').insert([
+          {
+            id: newRunning.id,
+            description: newRunning.description,
+            project_id: newRunning.project_id,
+            started_at: newRunning.started_at,
+            ended_at: null,
+            duration_seconds: null,
+            source: 'timer',
+          },
+        ]);
+      }
+    },
+    [runningEntry]
+  );
+
+  // Stop the active server-synced timer (supports forgotten-timer recovery custom end time)
+  const stopTimer = useCallback(
+    async (customEndedAt?: Date) => {
+      if (!runningEntry) return;
+      const endMs = customEndedAt ? customEndedAt.getTime() : Date.now();
+      const startMs = new Date(runningEntry.started_at).getTime();
+      const safeEndMs = Math.max(startMs + 1000, endMs);
+      const endedAt = new Date(safeEndMs).toISOString();
+      const durationSeconds = Math.max(1, Math.floor((safeEndMs - startMs) / 1000));
+      const source: EntrySource = customEndedAt ? 'adjusted' : 'timer';
+
+      setEntries((prev) => {
+        const next = prev.map((e) =>
+          e.id === runningEntry.id
+            ? { ...e, ended_at: endedAt, duration_seconds: durationSeconds, source }
+            : e
+        );
+        persistLocal(next);
+        return next;
+      });
+
+      const supabase = createClient();
+      if (supabase) {
+        await supabase
+          .from('time_entries')
+          .update({ ended_at: endedAt, duration_seconds: durationSeconds, source })
+          .eq('id', runningEntry.id);
+      }
+    },
+    [runningEntry]
+  );
+
+  // Add manual / quick-add entry ("ended now" by default)
+  const addManualEntry = useCallback(
     async (entryData: {
       description: string;
       projectId?: string | null;
       startedAt: string;
       endedAt: string;
       durationSeconds: number;
-      isManual: boolean;
+      source?: EntrySource;
     }) => {
       const newEntry: TimeEntry = {
-        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `entry-${Date.now()}`,
-        description: entryData.description || 'Untitled Task',
-        project_id: entryData.projectId || null,
+        id:
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `entry-${Date.now()}`,
+        task_id: null,
+        project_id: entryData.projectId ?? null,
+        description: entryData.description.trim() || 'Untitled Task',
         started_at: entryData.startedAt,
         ended_at: entryData.endedAt,
         duration_seconds: entryData.durationSeconds,
-        is_manual: entryData.isManual,
+        source: entryData.source ?? 'manual',
         created_at: new Date().toISOString(),
       };
 
-      // Optimistic update
-      setEntries((prev) => [newEntry, ...prev]);
+      setEntries((prev) => {
+        const next = [newEntry, ...prev].sort(
+          (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+        );
+        persistLocal(next);
+        return next;
+      });
 
       const supabase = createClient();
       if (supabase) {
-        try {
-          const { error } = await supabase.from('time_entries').insert([
-            {
-              id: newEntry.id,
-              description: newEntry.description,
-              project_id: newEntry.project_id,
-              started_at: newEntry.started_at,
-              ended_at: newEntry.ended_at,
-              duration_seconds: newEntry.duration_seconds,
-              is_manual: newEntry.is_manual,
-            },
-          ]);
-          if (!error) return;
-        } catch (e) {
-          console.warn('Failed cloud sync, stored locally', e);
-        }
-      }
-
-      // Local storage persistence
-      if (typeof window !== 'undefined') {
-        const current = JSON.parse(localStorage.getItem(STORAGE_KEY_ENTRIES) || '[]');
-        localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify([newEntry, ...current]));
+        await supabase.from('time_entries').insert([
+          {
+            id: newEntry.id,
+            description: newEntry.description,
+            project_id: newEntry.project_id,
+            started_at: newEntry.started_at,
+            ended_at: newEntry.ended_at,
+            duration_seconds: newEntry.duration_seconds,
+            source: newEntry.source,
+          },
+        ]);
       }
     },
     []
   );
 
-  // Update entry
+  // Update entry inline
   const updateEntry = useCallback(async (id: string, updates: Partial<TimeEntry>) => {
-    setEntries((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
-    );
+    setEntries((prev) => {
+      const next = prev.map((item) => (item.id === id ? { ...item, ...updates } : item));
+      persistLocal(next);
+      return next;
+    });
 
     const supabase = createClient();
     if (supabase) {
-      try {
-        await supabase.from('time_entries').update(updates).eq('id', id);
-      } catch (e) {
-        console.warn('Update failed', e);
-      }
-    }
-
-    if (typeof window !== 'undefined') {
-      const current: TimeEntry[] = JSON.parse(localStorage.getItem(STORAGE_KEY_ENTRIES) || '[]');
-      const updated = current.map((item) => (item.id === id ? { ...item, ...updates } : item));
-      localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(updated));
+      await supabase.from('time_entries').update(updates).eq('id', id);
     }
   }, []);
 
-  // Delete entry
-  const deleteEntry = useCallback(async (id: string) => {
-    setEntries((prev) => prev.filter((item) => item.id !== id));
+  // Delete entry (returns deleted entry so caller can offer Undo toast)
+  const deleteEntry = useCallback(
+    async (id: string): Promise<TimeEntry | null> => {
+      const target = entries.find((e) => e.id === id) || null;
+      setEntries((prev) => {
+        const next = prev.filter((item) => item.id !== id);
+        persistLocal(next);
+        return next;
+      });
+
+      const supabase = createClient();
+      if (supabase) {
+        await supabase.from('time_entries').delete().eq('id', id);
+      }
+      return target;
+    },
+    [entries]
+  );
+
+  // Restore deleted entry for Undo toast
+  const restoreEntry = useCallback(async (entry: TimeEntry) => {
+    setEntries((prev) => {
+      const next = [entry, ...prev].sort(
+        (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+      );
+      persistLocal(next);
+      return next;
+    });
 
     const supabase = createClient();
     if (supabase) {
-      try {
-        await supabase.from('time_entries').delete().eq('id', id);
-      } catch (e) {
-        console.warn('Delete failed', e);
-      }
-    }
-
-    if (typeof window !== 'undefined') {
-      const current: TimeEntry[] = JSON.parse(localStorage.getItem(STORAGE_KEY_ENTRIES) || '[]');
-      const updated = current.filter((item) => item.id !== id);
-      localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(updated));
+      await supabase.from('time_entries').insert([
+        {
+          id: entry.id,
+          description: entry.description,
+          project_id: entry.project_id,
+          started_at: entry.started_at,
+          ended_at: entry.ended_at,
+          duration_seconds: entry.duration_seconds,
+          source: entry.source,
+        },
+      ]);
     }
   }, []);
 
   return {
-    entries,
+    entries: completedEntries,
+    runningEntry,
+    elapsedSeconds,
+    isRunning: !!runningEntry,
     isLoading,
     isCloudConnected,
-    addEntry,
+    startTimer,
+    stopTimer,
+    addManualEntry,
     updateEntry,
     deleteEntry,
+    restoreEntry,
     refreshEntries: loadEntries,
   };
 }

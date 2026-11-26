@@ -1,50 +1,71 @@
 'use client';
 
 import React from 'react';
-import { AnalyticsSummary } from '@/types';
+import { AnalyticsSummary, Project } from '@/types';
 
 interface MinimalBarChartProps {
   summary: AnalyticsSummary;
+  projects?: Project[];
 }
 
-export function MinimalBarChart({ summary }: MinimalBarChartProps) {
+export function MinimalBarChart({ summary, projects = [] }: MinimalBarChartProps) {
   if (summary.taskBreakdown.length === 0) {
     return (
       <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#191919] rounded-md p-6 text-center">
-        <p className="text-xs text-zinc-400">No tasks logged in this time range.</p>
+        <p className="text-xs text-zinc-400">No tasks logged in this period.</p>
       </div>
     );
   }
 
-  return (
-    <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#191919] rounded-md p-4">
-      <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
-        Time Distribution by Task
-      </h3>
+  const projectMap = new Map(projects.map((p) => [p.id, p]));
 
-      <div className="space-y-3">
-        {summary.taskBreakdown.map((task) => (
-          <div key={task.description} className="space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate pr-4">
-                {task.description}
-              </span>
-              <div className="flex items-center space-x-2 text-zinc-500 font-mono text-[11px] shrink-0">
-                <span>{task.hours} hrs</span>
-                <span className="text-zinc-300 dark:text-zinc-700">|</span>
-                <span className="w-8 text-right">{task.percentage}%</span>
+  return (
+    <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#191919] rounded-md overflow-hidden">
+      <div className="grid grid-cols-12 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-4 py-2.5 bg-zinc-50 dark:bg-[#202020] border-b border-zinc-200 dark:border-zinc-800">
+        <div className="col-span-6">Task</div>
+        <div className="col-span-3">Share</div>
+        <div className="col-span-3 text-right">Hours</div>
+      </div>
+
+      <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+        {summary.taskBreakdown.map((task) => {
+          const proj = task.projectId ? projectMap.get(task.projectId) : null;
+          return (
+            <div
+              key={task.description}
+              className="grid grid-cols-12 items-center px-4 py-2.5 text-xs hover:bg-zinc-50/70 dark:hover:bg-zinc-800/30"
+            >
+              <div className="col-span-6 flex items-center space-x-2 pr-3 min-w-0">
+                {proj && (
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: proj.color }}
+                    title={proj.name}
+                  />
+                )}
+                <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                  {task.description}
+                </span>
+              </div>
+
+              <div className="col-span-3 flex items-center space-x-2 pr-3">
+                <div className="flex-1 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-zinc-700 dark:bg-zinc-300 rounded-full"
+                    style={{ width: `${Math.max(3, task.percentage)}%` }}
+                  />
+                </div>
+                <span className="text-[11px] font-mono text-zinc-400 w-8 text-right">
+                  {task.percentage}%
+                </span>
+              </div>
+
+              <div className="col-span-3 text-right font-mono tabular-nums text-zinc-700 dark:text-zinc-300">
+                {task.hours}h
               </div>
             </div>
-
-            {/* Restrained Minimalist Bar */}
-            <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-zinc-700 dark:bg-zinc-300 rounded-full transition-all duration-300"
-                style={{ width: `${Math.max(3, task.percentage)}%` }}
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
