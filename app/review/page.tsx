@@ -1,24 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { Topbar } from '@/components/layout/Topbar';
+import { EditorialNav } from '@/components/layout/EditorialNav';
 import { useTimeEntries } from '@/hooks/useTimeEntries';
 import { useProjects } from '@/hooks/useProjects';
 import { useTasks } from '@/hooks/useTasks';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { formatReadableDuration, getLocalDayKey } from '@/lib/utils';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Printer,
-  ArrowLeft,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Printer } from 'lucide-react';
 
 export default function WeeklyReviewPage() {
-  const { entries, isCloudConnected } = useTimeEntries();
+  const { entries, runningEntry, elapsedSeconds, isCloudConnected, stopTimer } =
+    useTimeEntries();
   const { projects } = useProjects();
   const { tasks } = useTasks();
   const [offset, setOffset] = useState(0);
@@ -39,7 +32,6 @@ export default function WeeklyReviewPage() {
     }
   };
 
-  // Untracked weekdays (Mon-Fri) in this week
   const untrackedWeekdays = useMemo(() => {
     const dayTotals = new Map<string, number>();
     summary.dailyStacked.forEach((d) => dayTotals.set(d.dayKey, d.totalSeconds));
@@ -66,7 +58,6 @@ export default function WeeklyReviewPage() {
     return missing;
   }, [summary.dailyStacked, summary.bounds.start]);
 
-  // Biggest overruns (tasks where actual > estimate)
   const overruns = useMemo(() => {
     const list: { title: string; actual: number; estimate: number; diff: number }[] = [];
     summary.projectBreakdown.forEach((p) => {
@@ -84,7 +75,6 @@ export default function WeeklyReviewPage() {
     return list.sort((a, b) => b.diff - a.diff);
   }, [summary.projectBreakdown]);
 
-  // Export CSV for this week
   const handleExportCsv = () => {
     const projectMap = new Map(projects.map((p) => [p.id, p.name]));
     const weekEntries = entries.filter((e) => {
@@ -118,121 +108,157 @@ export default function WeeklyReviewPage() {
     URL.revokeObjectURL(url);
   };
 
+  const billableSummary = useMemo(() => {
+    const projectMap = new Map(projects.map((p) => [p.id, p]));
+    let billableSeconds = 0;
+    let totalAmount = 0;
+
+    summary.projectBreakdown.forEach((item) => {
+      if (!item.projectId) return;
+      const proj = projectMap.get(item.projectId);
+      if (proj?.is_billable) {
+        billableSeconds += item.seconds;
+        if (proj.hourly_rate) {
+          totalAmount += (item.seconds / 3600) * Number(proj.hourly_rate);
+        }
+      }
+    });
+
+    return {
+      hours: (billableSeconds / 3600).toFixed(1),
+      amount: Math.round(totalAmount),
+      hasBillable: billableSeconds > 0,
+    };
+  }, [projects, summary.projectBreakdown]);
+
   return (
-    <div className="flex min-h-screen">
-      <Sidebar isCloudConnected={isCloudConnected} />
+    <div className="min-h-screen flex flex-col">
+      <EditorialNav
+        isCloudConnected={isCloudConnected}
+        runningLabel={runningEntry?.description || null}
+        elapsedSeconds={elapsedSeconds}
+        onStopTimer={() => stopTimer()}
+      />
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar title="Weekly Review" />
+      <main className="flex-1 mx-auto w-full max-w-6xl px-5 sm:px-10 py-10 sm:py-16 space-y-12">
+        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+          <div className="space-y-4">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground block">
+              ( Weekly review )
+            </span>
 
-        <main className="flex-1 max-w-3xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-          <div className="flex items-center md:hidden no-print">
-            <Link
-              href="/"
-              className="inline-flex items-center space-x-1 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Ledger</span>
-            </Link>
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-3">
               <button
+                type="button"
                 onClick={() => setOffset((o) => o - 1)}
-                className="no-print p-1 rounded border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                aria-label="Previous week"
+                className="no-print p-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 cursor-pointer"
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               </button>
-              <div>
-                <h1 className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                  Weekly Review · {summary.periodLabel}
-                </h1>
-                <p className="text-xs text-zinc-500 font-mono">
-                  {summary.totalHours}h total · {summary.activeDays} active days ·{' '}
-                  {summary.focusBlocksCount} focus blocks (90m+)
-                </p>
-              </div>
+              <h1 className="font-display text-[clamp(1.75rem,3.6vw,2.75rem)] leading-[1.05] tracking-[-0.03em] font-medium text-foreground">
+                {summary.periodLabel}
+              </h1>
               <button
+                type="button"
                 onClick={() => setOffset((o) => Math.min(0, o + 1))}
                 disabled={offset >= 0}
-                className="no-print p-1 rounded border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-30"
+                aria-label="Next week"
+                className="no-print p-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 disabled:opacity-30 cursor-pointer"
               >
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="no-print flex items-center space-x-2">
-              <button
-                onClick={handleExportCsv}
-                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export CSV</span>
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:opacity-90"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print Report</span>
-              </button>
-            </div>
+            <p className="font-mono text-xs text-muted-foreground">
+              {summary.totalHours}h total · {summary.activeDays} active days ·{' '}
+              {summary.focusBlocksCount} focus blocks (90m+)
+              {billableSummary.hasBillable
+                ? ` · ${billableSummary.hours}h billable`
+                : ''}
+            </p>
           </div>
 
-          {/* Top Projects */}
-          <section className="border border-zinc-200 dark:border-zinc-800 rounded-md p-4 bg-white dark:bg-[#191919] space-y-2.5">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-              Top Projects
-            </h2>
+          <div className="no-print flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-border text-xs text-foreground hover:border-foreground/40 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Export CSV</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-saffron text-saffron-foreground text-xs font-medium hover:opacity-90 cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Print report</span>
+            </button>
+          </div>
+        </header>
+
+        {/* 01 Top Projects */}
+        <section className="border-t border-foreground/15 pt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-3">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              ( 01 ) Top projects
+            </span>
+          </div>
+          <div className="lg:col-span-9">
             {summary.projectBreakdown.length === 0 ? (
-              <p className="text-xs text-zinc-400">No time logged this week.</p>
+              <p className="text-sm text-muted-foreground">No time logged this week.</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="divide-y divide-border">
                 {summary.projectBreakdown.slice(0, 5).map((p) => (
                   <div
                     key={p.projectId || 'untagged'}
-                    className="flex items-center justify-between text-xs"
+                    className="flex items-center justify-between py-2.5 text-sm"
                   >
-                    <span className="flex items-center space-x-2">
+                    <span className="flex items-center gap-2.5">
                       <span
                         className="w-2 h-2 rounded-full"
                         style={{ backgroundColor: p.color }}
+                        aria-hidden="true"
                       />
-                      <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                        {p.name}
-                      </span>
+                      <span className="font-medium text-foreground">{p.name}</span>
                     </span>
-                    <span className="font-mono text-zinc-500">
+                    <span className="font-mono text-xs text-muted-foreground">
                       {p.hours}h ({p.percentage}%)
                     </span>
                   </div>
                 ))}
               </div>
             )}
-          </section>
+          </div>
+        </section>
 
-          {/* Biggest Overruns & Untracked Weekdays */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <section className="border border-zinc-200 dark:border-zinc-800 rounded-md p-4 bg-white dark:bg-[#191919] space-y-2">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-                Estimate Overruns
+        {/* 02 Overruns & Untracked Weekdays */}
+        <section className="border-t border-foreground/15 pt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-3">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              ( 02 ) Gaps & overruns
+            </span>
+          </div>
+          <div className="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                Estimate overruns
               </h2>
               {overruns.length === 0 ? (
-                <p className="text-xs text-zinc-400">
+                <p className="text-sm text-muted-foreground">
                   No task estimate overruns recorded.
                 </p>
               ) : (
-                <div className="space-y-1.5">
+                <div className="divide-y divide-border">
                   {overruns.slice(0, 4).map((o) => (
                     <div
                       key={o.title}
-                      className="flex items-center justify-between text-xs"
+                      className="flex items-center justify-between py-2 text-sm"
                     >
-                      <span className="truncate pr-2 text-zinc-700 dark:text-zinc-300">
-                        {o.title}
-                      </span>
-                      <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400 shrink-0">
+                      <span className="truncate pr-3 text-foreground">{o.title}</span>
+                      <span className="font-mono text-xs text-saffron shrink-0">
                         {formatReadableDuration(o.actual)} /{' '}
                         {formatReadableDuration(o.estimate)} est
                       </span>
@@ -240,46 +266,50 @@ export default function WeeklyReviewPage() {
                   ))}
                 </div>
               )}
-            </section>
+            </div>
 
-            <section className="border border-zinc-200 dark:border-zinc-800 rounded-md p-4 bg-white dark:bg-[#191919] space-y-2">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-                Untracked Weekdays
+            <div className="space-y-3">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                Untracked weekdays
               </h2>
               {untrackedWeekdays.length === 0 ? (
-                <p className="text-xs text-zinc-400">
+                <p className="text-sm text-muted-foreground">
                   All weekdays so far have logged entries.
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {untrackedWeekdays.map((d) => (
                     <span
                       key={d}
-                      className="px-2 py-0.5 rounded text-[11px] font-mono border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500"
+                      className="px-2.5 py-1 rounded-full text-xs font-mono border border-dashed border-foreground/25 text-muted-foreground"
                     >
                       {d}
                     </span>
                   ))}
                 </div>
               )}
-            </section>
+            </div>
           </div>
+        </section>
 
-          {/* Reflection Notes */}
-          <section className="border border-zinc-200 dark:border-zinc-800 rounded-md p-4 bg-white dark:bg-[#191919] space-y-2">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-              Weekly Notes
-            </h2>
+        {/* 03 Reflection Notes */}
+        <section className="border-t border-foreground/15 pt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-3">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              ( 03 ) Weekly notes
+            </span>
+          </div>
+          <div className="lg:col-span-9">
             <textarea
               rows={4}
               value={notes}
               onChange={(e) => handleNotesChange(e.target.value)}
               placeholder="What moved the needle this week? What needs adjusting next week?"
-              className="w-full text-xs bg-transparent focus:outline-none text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 resize-y"
+              className="w-full text-sm leading-relaxed py-2 border-b border-foreground/20 focus:border-saffron bg-transparent focus:outline-none text-foreground placeholder:text-muted-foreground/60 resize-y"
             />
-          </section>
-        </main>
-      </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

@@ -49,8 +49,9 @@ export interface Database {
           project_id: string | null;
           title: string;
           priority: 'low' | 'medium' | 'high';
-          status: 'todo' | 'in_progress' | 'done';
           estimate_seconds: number | null;
+          day: string;
+          thread_id: string;
           created_at: string;
         };
         Insert: {
@@ -59,8 +60,9 @@ export interface Database {
           project_id?: string | null;
           title: string;
           priority?: 'low' | 'medium' | 'high';
-          status?: 'todo' | 'in_progress' | 'done';
           estimate_seconds?: number | null;
+          day?: string;
+          thread_id?: string;
           created_at?: string;
         };
         Update: {
@@ -69,8 +71,9 @@ export interface Database {
           project_id?: string | null;
           title?: string;
           priority?: 'low' | 'medium' | 'high';
-          status?: 'todo' | 'in_progress' | 'done';
           estimate_seconds?: number | null;
+          day?: string;
+          thread_id?: string;
           created_at?: string;
         };
         Relationships: [];

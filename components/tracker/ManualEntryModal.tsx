@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Project, EntrySource } from '@/types';
-import { parseDurationInput } from '@/lib/utils';
+import { dayAt, formatReadableDuration, formatTimeShort, parseDurationInput, todayKey } from '@/lib/utils';
 
 interface ManualEntryModalProps {
   isOpen: boolean;
   projects: Project[];
+  /** Existing task names, suggested while typing */
+  taskTitles?: string[];
   defaultRange?: { startedAt: string; endedAt: string } | null;
   onClose: () => void;
   onSubmit: (entry: {
@@ -20,9 +22,14 @@ interface ManualEntryModalProps {
   }) => Promise<void>;
 }
 
+const fieldClass =
+  'w-full rounded-lg bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-saffron/40';
+
+/* Log a finished session, or fill an untracked gap. */
 export function ManualEntryModal({
   isOpen,
   projects,
+  taskTitles = [],
   defaultRange,
   onClose,
   onSubmit,
@@ -30,9 +37,16 @@ export function ManualEntryModal({
   const [description, setDescription] = useState('');
   const [durationStr, setDurationStr] = useState('1h 30m');
   const [projectId, setProjectId] = useState<string>('');
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayKey);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setDate(todayKey());
+      setError(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -47,28 +61,22 @@ export function ManualEntryModal({
     if (defaultRange) {
       startedAt = new Date(defaultRange.startedAt);
       endedAt = new Date(defaultRange.endedAt);
-      durationSeconds = Math.max(
-        60,
-        Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000)
-      );
+      durationSeconds = Math.max(60, Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000));
     } else {
       const parsed = parseDurationInput(durationStr);
       if (!parsed) {
-        setError('Enter duration like 1h45, 1:45, 90m, or 1.5');
+        setError('Use formats like 1h45, 1:45, 90m, or 1.5.');
         return;
       }
       durationSeconds = parsed;
-      const todayStr = new Date().toISOString().split('T')[0];
-      // "Ended now" by default when logging for today
-      endedAt =
-        date === todayStr ? new Date() : new Date(`${date}T17:00:00`);
+      endedAt = date === todayKey() ? new Date() : dayAt(date, 17);
       startedAt = new Date(endedAt.getTime() - durationSeconds * 1000);
     }
 
     setIsSubmitting(true);
     try {
       await onSubmit({
-        description: description.trim() || 'Deep Work',
+        description: description.trim(),
         projectId: projectId || null,
         startedAt: startedAt.toISOString(),
         endedAt: endedAt.toISOString(),
@@ -83,74 +91,86 @@ export function ManualEntryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4">
-      <div className="w-full max-w-sm bg-white dark:bg-[#202020] border border-zinc-200 dark:border-zinc-800 rounded-md shadow-xl p-4">
-        <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            {defaultRange ? 'Fill Untracked Gap' : 'Log Completed Session'}
-          </h3>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md bg-card text-card-foreground rounded-2xl shadow-xl p-6 space-y-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">
+            {defaultRange
+              ? `Fill ${formatTimeShort(defaultRange.startedAt)} – ${formatTimeShort(defaultRange.endedAt)} · ${formatReadableDuration(
+                  (new Date(defaultRange.endedAt).getTime() - new Date(defaultRange.startedAt).getTime()) / 1000
+                )}`
+              : 'Log finished work'}
+          </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 rounded"
+            aria-label="Close dialog"
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-3.5 space-y-3">
-          <div>
-            <label className="text-[11px] font-medium text-zinc-500 block mb-1">
-              Task Description
-            </label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="block space-y-1.5">
+            <span className="text-xs text-muted-foreground">Task</span>
             <input
               type="text"
-              required
               autoFocus
-              placeholder="e.g. Deep Work, Client Review"
+              list="task-title-options"
+              placeholder="Leave empty for Untitled"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full text-xs px-2.5 py-1.5 border border-zinc-200 dark:border-zinc-700 rounded bg-transparent focus:outline-none focus:border-zinc-400 text-zinc-900 dark:text-zinc-100"
+              className={fieldClass}
             />
-          </div>
+            <datalist id="task-title-options">
+              {taskTitles.map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          </label>
 
           {!defaultRange && (
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[11px] font-medium text-zinc-500 block mb-1">
-                  Duration (1h45, 1:45, 90m)
-                </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block space-y-1.5">
+                <span className="text-xs text-muted-foreground">Duration</span>
                 <input
                   type="text"
                   required
                   value={durationStr}
                   onChange={(e) => setDurationStr(e.target.value)}
                   placeholder="1h 30m"
-                  className="w-full text-xs font-mono px-2 py-1.5 border border-zinc-200 dark:border-zinc-700 rounded bg-transparent focus:outline-none text-zinc-900 dark:text-zinc-100"
+                  className={`${fieldClass} font-mono`}
                 />
-              </div>
-              <div>
-                <label className="text-[11px] font-medium text-zinc-500 block mb-1">
-                  Date (ended now)
-                </label>
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs text-muted-foreground">Day</span>
                 <input
                   type="date"
                   value={date}
+                  max={todayKey()}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full text-xs px-2 py-1.5 border border-zinc-200 dark:border-zinc-700 rounded bg-transparent focus:outline-none text-zinc-900 dark:text-zinc-100"
+                  className={fieldClass}
                 />
-              </div>
+              </label>
             </div>
           )}
 
           {projects.length > 0 && (
-            <div>
-              <label className="text-[11px] font-medium text-zinc-500 block mb-1">
-                Project
-              </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs text-muted-foreground">Project (for a new task)</span>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="w-full text-xs px-2 py-1.5 border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-[#202020] focus:outline-none text-zinc-900 dark:text-zinc-100"
+                className={`${fieldClass} cursor-pointer`}
               >
                 <option value="">No project</option>
                 {projects
@@ -161,25 +181,25 @@ export function ManualEntryModal({
                     </option>
                   ))}
               </select>
-            </div>
+            </label>
           )}
 
-          {error && <p className="text-[11px] text-rose-500">{error}</p>}
+          {error && <p className="text-xs text-saffron">{error}</p>}
 
-          <div className="flex justify-end space-x-2 pt-2">
+          <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="px-2.5 py-1 text-xs text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded"
+              className="px-3.5 py-1.5 rounded-full text-xs text-muted-foreground hover:text-foreground cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-3.5 py-1 text-xs bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium hover:opacity-90"
+              className="px-4 py-1.5 rounded-full text-xs font-medium bg-saffron text-saffron-foreground hover:opacity-90 cursor-pointer disabled:opacity-50"
             >
-              {isSubmitting ? 'Saving...' : 'Save Entry'}
+              {isSubmitting ? 'Saving…' : 'Save'}
             </button>
           </div>
         </form>

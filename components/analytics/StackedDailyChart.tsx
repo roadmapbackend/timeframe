@@ -8,26 +8,24 @@ interface StackedDailyChartProps {
   days: DailyStackedDay[];
 }
 
+/* Single stacked-by-project daily bar chart for week and month views. */
 export function StackedDailyChart({ days }: StackedDailyChartProps) {
   if (days.length === 0) return null;
 
-  const maxSeconds = Math.max(
-    3600,
-    ...days.map((d) => d.totalSeconds)
-  );
+  const maxSeconds = Math.max(3600, ...days.map((d) => d.totalSeconds));
 
   return (
-    <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#191919] rounded-md p-4 space-y-3">
+    <div className="border-t border-foreground/15 pt-8 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-          Daily Hours by Project
-        </h3>
-        <span className="text-[10px] font-mono text-zinc-400">
+        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          ( Daily hours by project )
+        </span>
+        <span className="font-mono text-[11px] text-muted-foreground">
           max {(maxSeconds / 3600).toFixed(1)}h
         </span>
       </div>
 
-      <div className="h-36 flex items-end gap-1.5 pt-2">
+      <div className="h-40 flex items-end gap-1.5 pt-2">
         {days.map((day) => {
           const totalPct = Math.round((day.totalSeconds / maxSeconds) * 100);
           const tooltipText =
@@ -40,7 +38,7 @@ export function StackedDailyChart({ days }: StackedDailyChartProps) {
           return (
             <div
               key={day.dayKey}
-              className="flex-1 flex flex-col items-center h-full justify-end group"
+              className="flex-1 flex flex-col items-center h-full justify-end"
               title={tooltipText}
             >
               <div
@@ -48,7 +46,9 @@ export function StackedDailyChart({ days }: StackedDailyChartProps) {
                 style={{
                   height: day.totalSeconds > 0 ? `${Math.max(4, totalPct)}%` : '2px',
                   backgroundColor:
-                    day.totalSeconds === 0 ? 'rgba(161,161,170,0.2)' : undefined,
+                    day.totalSeconds === 0
+                      ? 'color-mix(in oklab, var(--foreground) 16%, transparent)'
+                      : undefined,
                 }}
               >
                 {day.segments.map((seg, i) => {
@@ -69,7 +69,7 @@ export function StackedDailyChart({ days }: StackedDailyChartProps) {
                 })}
               </div>
 
-              <span className="text-[10px] font-mono text-zinc-400 mt-1.5 truncate max-w-full">
+              <span className="font-mono text-[10px] text-muted-foreground mt-2 truncate max-w-full">
                 {day.label}
               </span>
             </div>

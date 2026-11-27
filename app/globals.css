@@ -3,57 +3,98 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #37352f;
-  --sidebar-bg: #f7f7f5;
-  --border-color: rgba(55, 53, 47, 0.09);
+  --background: #faf8f5;
+  --foreground: #161412;
+  --card: #ffffff;
+  --card-foreground: #161412;
+  --muted: #f0ece6;
+  --muted-foreground: #6e6a64;
+  --border: color-mix(in oklab, #161412 14%, transparent);
+  --saffron: #f97316;
+  --saffron-foreground: #ffffff;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #191919;
-    --foreground: #d4d4d8;
-    --sidebar-bg: #202020;
-    --border-color: rgba(255, 255, 255, 0.09);
-  }
+.dark {
+  --background: #0d0b09;
+  --foreground: #f6efe6;
+  --card: #161310;
+  --card-foreground: #f6efe6;
+  --muted: #211d18;
+  --muted-foreground: #a8a096;
+  --border: color-mix(in oklab, #f6efe6 14%, transparent);
+  --saffron: #fb923c;
+  --saffron-foreground: #0d0b09;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
+  font-family: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Minimalist Notion Scrollbars */
+/* Remove default number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Subtle scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(120, 119, 116, 0.2);
+  background: color-mix(in oklab, var(--foreground) 18%, transparent);
   border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(120, 119, 116, 0.4);
+  background: color-mix(in oklab, var(--foreground) 32%, transparent);
+}
+
+/* Task panel: rises from the bottom on mobile, slides in from the right on desktop */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+@media (min-width: 640px) {
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      transform: translateX(24px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @media print {
-  aside,
-  header,
+  nav,
   .no-print {
     display: none !important;
   }
 
   body {
     background: #ffffff !important;
-    color: #111111 !important;
+    color: #161412 !important;
   }
 }

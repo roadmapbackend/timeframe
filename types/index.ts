@@ -1,6 +1,5 @@
 export type EntrySource = 'timer' | 'manual' | 'adjusted';
 export type TaskPriority = 'low' | 'medium' | 'high';
-export type TaskStatus = 'todo' | 'in_progress' | 'done';
 
 export interface Project {
   id: string;
@@ -19,11 +18,15 @@ export interface Task {
   project_id: string | null;
   title: string;
   priority: TaskPriority;
-  status: TaskStatus;
   estimate_seconds: number | null;
+  /** Local calendar day this card belongs to, YYYY-MM-DD */
+  day: string;
+  /** Shared by the same task across different days */
+  thread_id: string;
   created_at: string;
 }
 
+/** One session of a task. `description` mirrors the task title. */
 export interface TimeEntry {
   id: string;
   user_id?: string;

@@ -1,5 +1,8 @@
 import type { Config } from 'tailwindcss';
 
+const withAlpha = (variable: string) =>
+  `color-mix(in oklab, var(${variable}) calc(<alpha-value> * 100%), transparent)`;
+
 const config: Config = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,53 +12,35 @@ const config: Config = {
   darkMode: 'class',
   theme: {
     extend: {
+      // color-mix lets opacity modifiers (bg-muted/60, border-saffron/50) work with CSS variables
       colors: {
-        notion: {
-          bg: {
-            light: '#ffffff',
-            dark: '#191919',
-          },
-          sidebar: {
-            light: '#f7f7f5',
-            dark: '#202020',
-          },
-          border: {
-            light: 'rgba(55, 53, 47, 0.09)',
-            dark: 'rgba(255, 255, 255, 0.09)',
-          },
-          hover: {
-            light: 'rgba(55, 53, 47, 0.04)',
-            dark: 'rgba(255, 255, 255, 0.055)',
-          },
-          text: {
-            primary: '#37352f',
-            secondary: '#787774',
-            darkPrimary: '#d4d4d8',
-            darkSecondary: '#9ca3af',
-          },
-          blue: '#2383e2',
-        },
+        background: withAlpha('--background'),
+        foreground: withAlpha('--foreground'),
+        card: withAlpha('--card'),
+        'card-foreground': withAlpha('--card-foreground'),
+        muted: withAlpha('--muted'),
+        'muted-foreground': withAlpha('--muted-foreground'),
+        border: withAlpha('--border'),
+        saffron: withAlpha('--saffron'),
+        'saffron-foreground': withAlpha('--saffron-foreground'),
       },
       fontFamily: {
+        display: [
+          '"Clash Display"',
+          '"Atkinson Hyperlegible"',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'sans-serif',
+        ],
+        serif: ['"Newsreader"', 'Georgia', 'serif'],
         sans: [
-          'Inter',
+          '"Atkinson Hyperlegible"',
           '-apple-system',
           'BlinkMacSystemFont',
           '"Segoe UI"',
-          'Roboto',
-          'Oxygen',
-          'Ubuntu',
-          'Cantarell',
           'sans-serif',
         ],
-        mono: [
-          'ui-monospace',
-          'SFMono-Regular',
-          'Menlo',
-          'Monaco',
-          'Consolas',
-          'monospace',
-        ],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
     },
   },

@@ -33,6 +33,7 @@ npm install
 ### 2. Configure Supabase (Optional for local testing, required for multi-device sync)
 1. Create a project on [Supabase](https://supabase.com).
 2. Go to the **SQL Editor** in your Supabase dashboard and run the contents of [`schema.sql`](./schema.sql).
+   - **Already have a database from an earlier version?** Run [`migrations/002_task_cards.sql`](./migrations/002_task_cards.sql) once instead (set your time zone at the top first, and back up before running). It turns existing entries into day task cards.
 3. Copy your project URL and anon public API key.
 4. Copy `.env.example` to `.env.local`:
    ```bash

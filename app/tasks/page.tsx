@@ -2,22 +2,18 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { Topbar } from '@/components/layout/Topbar';
+import { EditorialNav } from '@/components/layout/EditorialNav';
 import { ProjectDotPicker } from '@/components/projects/ProjectDotPicker';
-import { useTasks } from '@/hooks/useTasks';
 import { useProjects } from '@/hooks/useProjects';
-import { useTimeEntries } from '@/hooks/useTimeEntries';
-import { formatReadableDuration, parseDurationInput } from '@/lib/utils';
-import { TaskPriority, TaskStatus } from '@/types';
-import { Play, Plus, Trash2, Archive, ArrowLeft } from 'lucide-react';
+import { useTracker } from '@/hooks/useTracker';
+import { formatDayLabel, formatReadableDuration, parseDurationInput, todayKey } from '@/lib/utils';
+import { Task, TaskPriority } from '@/types';
+import { Play, Plus, Archive } from 'lucide-react';
 
 export default function TasksPage() {
   const router = useRouter();
-  const { tasks, isLoading, createTask, deleteTask, cycleStatus } = useTasks();
+  const tr = useTracker();
   const { projects, createProject, updateProject } = useProjects();
-  const { entries, isCloudConnected, startTimer } = useTimeEntries();
 
   const [title, setTitle] = useState('');
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -26,30 +22,32 @@ export default function TasksPage() {
   const [newProjectName, setNewProjectName] = useState('');
   const [showArchived, setShowArchived] = useState(false);
 
-  // Aggregate actual logged seconds per task_id
-  const actualByTask = useMemo(() => {
-    const map = new Map<string, number>();
-    entries.forEach((e) => {
-      if (e.task_id && e.duration_seconds) {
-        map.set(e.task_id, (map.get(e.task_id) || 0) + e.duration_seconds);
-      }
+  // One row per thread (the same task across days), newest activity first
+  const threads = useMemo(() => {
+    const seconds = new Map<string, number>();
+    tr.allEntries.forEach((e) => {
+      if (e.task_id) seconds.set(e.task_id, (seconds.get(e.task_id) || 0) + (e.duration_seconds || 0));
     });
-    return map;
-  }, [entries]);
+    const groups = new Map<string, { latest: Task; days: number; seconds: number }>();
+    [...tr.tasks]
+      .sort((a, b) => b.day.localeCompare(a.day) || b.created_at.localeCompare(a.created_at))
+      .forEach((t) => {
+        const g = groups.get(t.thread_id);
+        const secs = seconds.get(t.id) || 0;
+        if (!g) groups.set(t.thread_id, { latest: t, days: 1, seconds: secs });
+        else {
+          g.days += 1;
+          g.seconds += secs;
+        }
+      });
+    return Array.from(groups.values());
+  }, [tr.tasks, tr.allEntries]);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    const estimateSeconds = estimateInput.trim()
-      ? parseDurationInput(estimateInput.trim())
-      : null;
-
-    await createTask({
-      title: title.trim(),
-      projectId,
-      priority,
-      estimateSeconds,
-    });
+    const estimateSeconds = estimateInput.trim() ? parseDurationInput(estimateInput.trim()) : null;
+    await tr.createTask({ title: title.trim(), day: todayKey(), projectId, priority, estimateSeconds });
     setTitle('');
     setEstimateInput('');
   };
@@ -61,253 +59,203 @@ export default function TasksPage() {
     setNewProjectName('');
   };
 
-  const handleStartTaskTimer = async (task: {
-    id: string;
-    title: string;
-    project_id: string | null;
-  }) => {
-    await startTimer(task.title, task.project_id, task.id);
-    router.push('/');
+  const handleResume = async (task: Task) => {
+    const target = await tr.resumeTask(task);
+    router.push(target ? `/?task=${target.id}` : '/');
   };
-
-  const statusBadge = (status: TaskStatus) => {
-    if (status === 'done') return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300';
-    if (status === 'in_progress') return 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300';
-    return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400';
-  };
-
-  const statusLabel = (status: TaskStatus) =>
-    status === 'in_progress' ? 'In progress' : status === 'done' ? 'Done' : 'To do';
 
   const visibleProjects = projects.filter((p) => showArchived || !p.is_archived);
+  const fieldClass =
+    'rounded-lg bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-saffron/40';
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar isCloudConnected={isCloudConnected} />
+    <div className="min-h-screen flex flex-col">
+      <EditorialNav
+        isCloudConnected={tr.isCloudConnected}
+        runningLabel={tr.runningEntry?.description || null}
+        elapsedSeconds={tr.elapsedSeconds}
+        onStopTimer={() => tr.stopTimer()}
+      />
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar title="Tasks & Projects" />
+      <main className="flex-1 mx-auto w-full max-w-5xl px-5 sm:px-8 py-8 sm:py-12 space-y-10">
+        <h1 className="text-2xl font-semibold tracking-tight">Tasks & projects</h1>
 
-        <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-8">
-          <div className="flex items-center md:hidden">
-            <Link
-              href="/"
-              className="inline-flex items-center space-x-1 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+        {/* Projects */}
+        <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium">Projects</h2>
+            <button
+              type="button"
+              onClick={() => setShowArchived((v) => !v)}
+              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Ledger</span>
-            </Link>
+              {showArchived ? 'Hide archived' : 'Show archived'}
+            </button>
           </div>
 
-          {/* Projects Section */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                Projects
-              </h2>
-              <button
-                onClick={() => setShowArchived((v) => !v)}
-                className="text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+          <div className="flex flex-wrap items-center gap-2">
+            {visibleProjects.map((proj) => (
+              <div
+                key={proj.id}
+                className={`inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full text-xs ${
+                  proj.is_archived ? 'bg-muted/50 text-muted-foreground' : 'bg-muted'
+                }`}
               >
-                {showArchived ? 'Hide archived' : 'Show archived'}
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {visibleProjects.map((proj) => (
-                <div
-                  key={proj.id}
-                  className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded border text-xs ${
-                    proj.is_archived
-                      ? 'border-dashed border-zinc-200 dark:border-zinc-800 text-zinc-400'
-                      : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#191919] text-zinc-800 dark:text-zinc-200'
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: proj.color }} aria-hidden="true" />
+                <span>{proj.name}</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateProject(proj.id, {
+                      is_billable: !proj.is_billable,
+                      hourly_rate: proj.hourly_rate ?? 1000,
+                    })
+                  }
+                  className={`px-1.5 py-0.5 rounded-full cursor-pointer ${
+                    proj.is_billable ? 'text-saffron' : 'text-muted-foreground hover:text-foreground'
                   }`}
+                  title={proj.is_billable ? 'Billable (click to toggle)' : 'Mark billable'}
                 >
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: proj.color }}
-                  />
-                  <span>{proj.name}</span>
-                  <button
-                    onClick={() =>
-                      updateProject(proj.id, { is_archived: !proj.is_archived })
-                    }
-                    className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 pl-1"
-                    title={proj.is_archived ? 'Unarchive project' : 'Archive project'}
-                  >
-                    <Archive className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
+                  {proj.is_billable ? 'Billable' : '$'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateProject(proj.id, { is_archived: !proj.is_archived })}
+                  aria-label={proj.is_archived ? 'Unarchive project' : 'Archive project'}
+                  title={proj.is_archived ? 'Unarchive' : 'Archive'}
+                  className="p-1 rounded-full text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <Archive className="w-3 h-3" aria-hidden="true" />
+                </button>
+              </div>
+            ))}
 
-              <form onSubmit={handleAddProject} className="inline-flex items-center space-x-1">
-                <input
-                  type="text"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder="+ New project"
-                  className="text-xs px-2 py-1 border border-dashed border-zinc-300 dark:border-zinc-700 rounded bg-transparent focus:outline-none focus:border-zinc-500 w-32"
-                />
-                {newProjectName.trim() && (
-                  <button
-                    type="submit"
-                    className="p-1 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </form>
-            </div>
-          </section>
-
-          {/* Tasks Section */}
-          <section className="space-y-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-              Tasks ({tasks.length})
-            </h2>
-
-            {/* Add Task Bar */}
-            <form
-              onSubmit={handleAddTask}
-              className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#191919] rounded-md px-3 py-2 flex flex-wrap items-center gap-2"
-            >
+            <form onSubmit={handleAddProject} className="inline-flex items-center gap-1.5">
               <input
                 type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Add a task (e.g. Draft Q4 architecture doc)..."
-                className="flex-1 min-w-[180px] text-xs bg-transparent focus:outline-none text-zinc-900 dark:text-zinc-100"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="+ New project"
+                className="text-xs px-3 py-1.5 rounded-full bg-transparent hover:bg-muted focus:bg-muted focus:outline-none w-32 placeholder:text-muted-foreground"
               />
-
-              <ProjectDotPicker
-                projects={projects}
-                selectedProjectId={projectId}
-                onSelect={setProjectId}
-                onCreateProject={createProject}
-              />
-
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="text-[11px] px-1.5 py-1 border border-zinc-200 dark:border-zinc-800 rounded bg-white dark:bg-[#191919] text-zinc-600 dark:text-zinc-300 focus:outline-none"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-
-              <input
-                type="text"
-                value={estimateInput}
-                onChange={(e) => setEstimateInput(e.target.value)}
-                placeholder="Est (e.g. 2h)"
-                className="w-24 text-[11px] font-mono px-2 py-1 border border-zinc-200 dark:border-zinc-800 rounded bg-transparent focus:outline-none text-zinc-800 dark:text-zinc-200"
-              />
-
-              <button
-                type="submit"
-                className="px-3 py-1 rounded text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90"
-              >
-                Add Task
-              </button>
+              {newProjectName.trim() && (
+                <button
+                  type="submit"
+                  aria-label="Add project"
+                  className="p-1.5 rounded-full bg-saffron text-saffron-foreground cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+              )}
             </form>
+          </div>
+        </section>
 
-            {/* Tasks Table */}
-            {isLoading ? (
-              <div className="border border-zinc-200 dark:border-zinc-800 rounded-md p-8 text-center text-xs text-zinc-400">
-                Loading tasks...
-              </div>
-            ) : tasks.length === 0 ? (
-              <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-md p-10 text-center text-xs text-zinc-400">
-                No tasks yet. Create one above to track estimates vs actual hours.
-              </div>
-            ) : (
-              <div className="border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden bg-white dark:bg-[#191919]">
-                <div className="grid grid-cols-12 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-3.5 py-2 bg-zinc-50 dark:bg-[#202020] border-b border-zinc-200 dark:border-zinc-800">
-                  <div className="col-span-5">Task</div>
-                  <div className="col-span-2">Status</div>
-                  <div className="col-span-2">Priority</div>
-                  <div className="col-span-3 text-right">Actual / Est</div>
-                </div>
+        {/* Tasks */}
+        <section className="space-y-4">
+          <form
+            onSubmit={handleAddTask}
+            className="rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-2"
+          >
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Plan a task for today…"
+              className="flex-1 min-w-[180px] text-sm bg-transparent px-1 focus:outline-none placeholder:text-muted-foreground/70"
+            />
+            <ProjectDotPicker
+              projects={projects}
+              selectedProjectId={projectId}
+              onSelect={setProjectId}
+              onCreateProject={createProject}
+            />
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as TaskPriority)}
+              aria-label="Task priority"
+              className={`${fieldClass} py-1.5 text-xs cursor-pointer`}
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+            <input
+              type="text"
+              value={estimateInput}
+              onChange={(e) => setEstimateInput(e.target.value)}
+              placeholder="Est. 2h"
+              className={`${fieldClass} py-1.5 text-xs font-mono w-24`}
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-full text-xs font-medium bg-saffron text-saffron-foreground hover:opacity-90 cursor-pointer"
+            >
+              Add
+            </button>
+          </form>
 
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                  {tasks.map((task) => {
-                    const proj = task.project_id
-                      ? projects.find((p) => p.id === task.project_id)
-                      : null;
-                    const actualSecs = actualByTask.get(task.id) || 0;
-
-                    return (
-                      <div
-                        key={task.id}
-                        className="grid grid-cols-12 items-center px-3.5 py-2 text-xs hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 group"
-                      >
-                        <div className="col-span-5 flex items-center space-x-2 pr-2 min-w-0">
-                          {proj && (
-                            <span
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: proj.color }}
-                              title={proj.name}
-                            />
-                          )}
-                          <span
-                            className={`truncate font-medium ${
-                              task.status === 'done'
-                                ? 'line-through text-zinc-400'
-                                : 'text-zinc-800 dark:text-zinc-200'
-                            }`}
-                          >
-                            {task.title}
-                          </span>
-                        </div>
-
-                        <div className="col-span-2">
-                          <button
-                            onClick={() => cycleStatus(task)}
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${statusBadge(
-                              task.status
-                            )}`}
-                            title="Click to cycle status"
-                          >
-                            {statusLabel(task.status)}
-                          </button>
-                        </div>
-
-                        <div className="col-span-2 text-[11px] text-zinc-500 capitalize">
-                          {task.priority}
-                        </div>
-
-                        <div className="col-span-3 flex items-center justify-end space-x-2 font-mono text-[11px] text-zinc-600 dark:text-zinc-300">
-                          <span>
-                            {actualSecs > 0 ? formatReadableDuration(actualSecs) : '0m'}
-                            {task.estimate_seconds
-                              ? ` / ${formatReadableDuration(task.estimate_seconds)}`
-                              : ''}
-                          </span>
-                          <button
-                            onClick={() => handleStartTaskTimer(task)}
-                            className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded"
-                            title="Start timer for this task"
-                          >
-                            <Play className="w-3.5 h-3.5 fill-current" />
-                          </button>
-                          <button
-                            onClick={() => deleteTask(task.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-rose-500 rounded transition-opacity"
-                            title="Delete task"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </section>
-        </main>
-      </div>
+          {tr.tasksLoading ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+          ) : threads.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No tasks yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {threads.map(({ latest, days, seconds }) => {
+                const proj = latest.project_id ? projects.find((p) => p.id === latest.project_id) : null;
+                const est = latest.estimate_seconds;
+                return (
+                  <div
+                    key={latest.thread_id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push(`/?task=${latest.id}`)}
+                    onKeyDown={(e) => e.key === 'Enter' && router.push(`/?task=${latest.id}`)}
+                    className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 cursor-pointer hover:border-foreground/20 hover:shadow-sm transition-[box-shadow,border-color]"
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: proj?.color || 'var(--border)' }}
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{latest.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {[
+                          proj?.name,
+                          latest.priority !== 'medium' ? `${latest.priority} priority` : null,
+                          latest.day === todayKey() ? 'today' : `last ${formatDayLabel(latest.day)}`,
+                          days > 1 ? `${days} days` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    </div>
+                    <span
+                      className={`font-mono text-xs tabular-nums ${est && seconds > est ? 'text-saffron' : 'text-foreground/85'}`}
+                    >
+                      {formatReadableDuration(seconds)}
+                      {est ? <span className="text-muted-foreground"> / {formatReadableDuration(est)}</span> : null}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleResume(latest);
+                      }}
+                      aria-label={`Resume ${latest.title}`}
+                      title="Resume today"
+                      className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted hover:bg-saffron hover:text-saffron-foreground cursor-pointer sm:opacity-0 sm:group-hover:opacity-100"
+                    >
+                      <Play className="w-3 h-3 fill-current translate-x-[1px]" aria-hidden="true" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   );
 }

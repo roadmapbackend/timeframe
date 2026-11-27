@@ -215,7 +215,9 @@ export function useAnalytics(
       group.seconds += dur;
 
       const linkedTask = e.task_id ? taskEntityMap.get(e.task_id) : null;
-      const taskKey = e.task_id || `desc:${(e.description || 'Untitled').trim().toLowerCase()}`;
+      // Same task on different days shares a thread: count it as one task
+      const taskKey =
+        linkedTask?.thread_id || e.task_id || `desc:${(e.description || 'Untitled').trim().toLowerCase()}`;
       const taskTitle = linkedTask?.title || e.description?.trim() || 'Untitled Task';
 
       if (!group.tasks.has(taskKey)) {

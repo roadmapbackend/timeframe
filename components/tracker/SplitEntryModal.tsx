@@ -3,23 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { TimeEntry } from '@/types';
-import { formatReadableDuration, parseDurationInput } from '@/lib/utils';
+import { formatReadableDuration, formatTimeShort, parseDurationInput } from '@/lib/utils';
 
 interface SplitEntryModalProps {
   entry: TimeEntry | null;
   onClose: () => void;
-  onSplit: (
-    entry: TimeEntry,
-    firstSeconds: number,
-    firstDesc: string,
-    secondDesc: string
-  ) => Promise<void>;
+  onSplit: (entry: TimeEntry, firstSeconds: number) => Promise<void>;
 }
 
+/* Split one session into two consecutive sessions of the same task. */
 export function SplitEntryModal({ entry, onClose, onSplit }: SplitEntryModalProps) {
   const [firstDurationStr, setFirstDurationStr] = useState('');
-  const [firstDesc, setFirstDesc] = useState('');
-  const [secondDesc, setSecondDesc] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,8 +21,6 @@ export function SplitEntryModal({ entry, onClose, onSplit }: SplitEntryModalProp
     if (!entry) return;
     const halfSecs = Math.max(60, Math.floor((entry.duration_seconds || 0) / 2));
     setFirstDurationStr(formatReadableDuration(halfSecs));
-    setFirstDesc(entry.description);
-    setSecondDesc(entry.description);
     setError(null);
   }, [entry]);
 
@@ -37,20 +29,21 @@ export function SplitEntryModal({ entry, onClose, onSplit }: SplitEntryModalProp
   const totalSecs = entry.duration_seconds || 0;
   const parsedFirst = parseDurationInput(firstDurationStr);
   const remainingSecs =
-    parsedFirst && parsedFirst > 0 && parsedFirst < totalSecs
-      ? totalSecs - parsedFirst
+    parsedFirst && parsedFirst > 0 && parsedFirst < totalSecs ? totalSecs - parsedFirst : null;
+  const splitAt =
+    parsedFirst && remainingSecs
+      ? new Date(new Date(entry.started_at).getTime() + parsedFirst * 1000).toISOString()
       : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!parsedFirst || parsedFirst <= 0 || parsedFirst >= totalSecs) {
-      setError(`First part must be less than ${formatReadableDuration(totalSecs)}.`);
+    if (!parsedFirst || !remainingSecs) {
+      setError(`First part must be under ${formatReadableDuration(totalSecs)}.`);
       return;
     }
-
     setIsSubmitting(true);
     try {
-      await onSplit(entry, parsedFirst, firstDesc, secondDesc);
+      await onSplit(entry, parsedFirst);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -58,88 +51,78 @@ export function SplitEntryModal({ entry, onClose, onSplit }: SplitEntryModalProp
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4">
-      <div className="w-full max-w-sm bg-white dark:bg-[#202020] border border-zinc-200 dark:border-zinc-800 rounded-md shadow-xl p-4">
-        <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            Split Entry ({formatReadableDuration(totalSecs)})
-          </h3>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm bg-card text-card-foreground rounded-2xl shadow-xl p-6 space-y-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Split session</h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 rounded"
+            aria-label="Close dialog"
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-3.5 space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-2">
-              <label className="text-[11px] font-medium text-zinc-500 block mb-1">
-                Part A Title
-              </label>
-              <input
-                type="text"
-                required
-                value={firstDesc}
-                onChange={(e) => setFirstDesc(e.target.value)}
-                className="w-full text-xs px-2 py-1.5 border border-zinc-200 dark:border-zinc-700 rounded bg-transparent focus:outline-none text-zinc-900 dark:text-zinc-100"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-medium text-zinc-500 block mb-1">
-                Part A Dur
-              </label>
-              <input
-                type="text"
-                required
-                autoFocus
-                value={firstDurationStr}
-                onChange={(e) => setFirstDurationStr(e.target.value)}
-                className="w-full text-xs font-mono px-2 py-1.5 border border-zinc-200 dark:border-zinc-700 rounded bg-transparent focus:outline-none text-zinc-900 dark:text-zinc-100"
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="block space-y-1.5">
+            <span className="text-xs text-muted-foreground">
+              Length of the first part (of {formatReadableDuration(totalSecs)})
+            </span>
+            <input
+              type="text"
+              autoFocus
+              value={firstDurationStr}
+              onChange={(e) => {
+                setFirstDurationStr(e.target.value);
+                setError(null);
+              }}
+              className="w-full rounded-lg bg-muted px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-saffron/40"
+            />
+          </label>
+
+          <div className="rounded-lg bg-muted/60 px-3 py-2 text-xs font-mono text-muted-foreground space-y-0.5">
+            {splitAt && remainingSecs ? (
+              <>
+                <p>
+                  {formatTimeShort(entry.started_at)} – {formatTimeShort(splitAt)} ·{' '}
+                  {formatReadableDuration(parsedFirst!)}
+                </p>
+                <p>
+                  {formatTimeShort(splitAt)} – {formatTimeShort(entry.ended_at!)} ·{' '}
+                  {formatReadableDuration(remainingSecs)}
+                </p>
+              </>
+            ) : (
+              <p>—</p>
+            )}
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-2">
-              <label className="text-[11px] font-medium text-zinc-500 block mb-1">
-                Part B Title
-              </label>
-              <input
-                type="text"
-                required
-                value={secondDesc}
-                onChange={(e) => setSecondDesc(e.target.value)}
-                className="w-full text-xs px-2 py-1.5 border border-zinc-200 dark:border-zinc-700 rounded bg-transparent focus:outline-none text-zinc-900 dark:text-zinc-100"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-medium text-zinc-500 block mb-1">
-                Part B Dur
-              </label>
-              <div className="text-xs font-mono px-2 py-1.5 border border-zinc-100 dark:border-zinc-800 rounded bg-zinc-50 dark:bg-zinc-900/50 text-zinc-500">
-                {remainingSecs ? formatReadableDuration(remainingSecs) : '—'}
-              </div>
-            </div>
-          </div>
+          {error && <p className="text-xs text-saffron">{error}</p>}
 
-          {error && <p className="text-[11px] text-rose-500">{error}</p>}
-
-          <div className="flex justify-end space-x-2 pt-2">
+          <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-2.5 py-1 text-xs text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded"
+              className="px-3.5 py-1.5 rounded-full text-xs text-muted-foreground hover:text-foreground cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !remainingSecs}
-              className="px-3.5 py-1 text-xs bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium hover:opacity-90 disabled:opacity-40"
+              className="px-4 py-1.5 rounded-full text-xs font-medium bg-saffron text-saffron-foreground hover:opacity-90 cursor-pointer disabled:opacity-40"
             >
-              {isSubmitting ? 'Splitting...' : 'Split Entry'}
+              {isSubmitting ? 'Splitting…' : 'Split'}
             </button>
           </div>
         </form>

@@ -178,3 +178,40 @@ export function getLocalDayKey(iso: string): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
+
+/** Today's local calendar day as YYYY-MM-DD */
+export function todayKey(): string {
+  return getLocalDayKey(new Date().toISOString());
+}
+
+/** Same rule as the database's unique index: trim, collapse spaces, lowercase */
+export function normalizeTitle(title: string): string {
+  return title.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+export function newId(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/** "Thu 26 Nov" style label for a YYYY-MM-DD key, or "Today" / "Yesterday" */
+export function formatDayLabel(dayKey: string): string {
+  const today = todayKey();
+  if (dayKey === today) return 'Today';
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  if (dayKey === getLocalDayKey(y.toISOString())) return 'Yesterday';
+  const [yr, mo, d] = dayKey.split('-').map(Number);
+  return new Date(yr, mo - 1, d).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+/** Local Date at a given hour on a YYYY-MM-DD day */
+export function dayAt(dayKey: string, hour: number, minute = 0): Date {
+  const [yr, mo, d] = dayKey.split('-').map(Number);
+  return new Date(yr, mo - 1, d, hour, minute, 0, 0);
+}

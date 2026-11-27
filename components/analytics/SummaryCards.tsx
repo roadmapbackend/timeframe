@@ -2,13 +2,13 @@
 
 import React from 'react';
 import { AnalyticsSummary, TimePeriod } from '@/types';
-import { Clock, TrendingUp, Focus } from 'lucide-react';
 
 interface SummaryCardsProps {
   summary: AnalyticsSummary;
   period: TimePeriod;
 }
 
+/* Hairline-separated editorial summary metrics. */
 export function SummaryCards({ summary, period }: SummaryCardsProps) {
   const avgOverActiveDays =
     summary.activeDays > 0
@@ -22,35 +22,33 @@ export function SummaryCards({ summary, period }: SummaryCardsProps) {
       : 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#191919] rounded-md p-3.5">
-        <div className="flex items-center justify-between text-zinc-400 text-xs">
-          <span className="font-medium">Total Logged</span>
-          <Clock className="w-4 h-4 stroke-[1.75]" />
-        </div>
-        <div className="mt-2 flex items-baseline space-x-1.5">
-          <span className="text-2xl font-semibold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
+    <div className="grid grid-cols-1 md:grid-cols-3 border-y border-foreground/15 divide-y md:divide-y-0 md:divide-x divide-border">
+      <div className="py-5 md:pr-6">
+        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground block">
+          Total logged
+        </span>
+        <div className="mt-2 flex items-baseline gap-1.5">
+          <span className="font-display text-3xl sm:text-4xl font-medium tabular-nums text-foreground">
             {summary.totalHours}
           </span>
-          <span className="text-xs text-zinc-500 font-mono">hrs</span>
+          <span className="font-mono text-xs text-muted-foreground">hrs</span>
         </div>
-        <p className="text-[11px] text-zinc-400 mt-1">
+        <p className="font-mono text-[11px] text-muted-foreground mt-2">
           {summary.entryCount} entries · {manualPct}% manual
         </p>
       </div>
 
-      <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#191919] rounded-md p-3.5">
-        <div className="flex items-center justify-between text-zinc-400 text-xs">
-          <span className="font-medium">Daily Average</span>
-          <TrendingUp className="w-4 h-4 stroke-[1.75]" />
-        </div>
-        <div className="mt-2 flex items-baseline space-x-1.5">
-          <span className="text-2xl font-semibold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
+      <div className="py-5 md:px-6">
+        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground block">
+          Daily average
+        </span>
+        <div className="mt-2 flex items-baseline gap-1.5">
+          <span className="font-display text-3xl sm:text-4xl font-medium tabular-nums text-foreground">
             {avgOverActiveDays}
           </span>
-          <span className="text-xs text-zinc-500 font-mono">hrs/day</span>
+          <span className="font-mono text-xs text-muted-foreground">hrs/day</span>
         </div>
-        <p className="text-[11px] text-zinc-400 mt-1">
+        <p className="font-mono text-[11px] text-muted-foreground mt-2">
           {summary.activeDays > 0
             ? `avg over ${summary.activeDays} active ${
                 summary.activeDays === 1 ? 'day' : 'days'
@@ -59,18 +57,17 @@ export function SummaryCards({ summary, period }: SummaryCardsProps) {
         </p>
       </div>
 
-      <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#191919] rounded-md p-3.5">
-        <div className="flex items-center justify-between text-zinc-400 text-xs">
-          <span className="font-medium">Focus Blocks (90m+)</span>
-          <Focus className="w-4 h-4 stroke-[1.75]" />
-        </div>
-        <div className="mt-2 flex items-baseline space-x-1.5">
-          <span className="text-2xl font-semibold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
+      <div className="py-5 md:pl-6">
+        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground block">
+          Focus blocks (90m+)
+        </span>
+        <div className="mt-2 flex items-baseline gap-1.5">
+          <span className="font-display text-3xl sm:text-4xl font-medium tabular-nums text-saffron">
             {summary.focusBlocksCount}
           </span>
-          <span className="text-xs text-zinc-500 font-mono">sessions</span>
+          <span className="font-mono text-xs text-muted-foreground">sessions</span>
         </div>
-        <p className="text-[11px] text-zinc-400 mt-1">
+        <p className="font-mono text-[11px] text-muted-foreground mt-2 truncate">
           {summary.taskBreakdown[0]
             ? `Top: ${summary.taskBreakdown[0].description}`
             : 'No deep work sessions yet'}

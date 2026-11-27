@@ -15,23 +15,29 @@ create table if not exists public.projects (
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 2. Tasks (optional parent for grouping entries and tracking estimates)
+-- 2. Tasks: one title on one calendar day (a card). Same title on other days shares thread_id.
 create table if not exists public.tasks (
     id uuid primary key default uuid_generate_v4(),
     user_id uuid references auth.users(id) on delete cascade not null default auth.uid(),
     project_id uuid references public.projects(id) on delete set null,
     title text not null,
     priority text check (priority in ('low', 'medium', 'high')) default 'medium' not null,
-    status text check (status in ('todo', 'in_progress', 'done')) default 'todo' not null,
     estimate_seconds integer check (estimate_seconds >= 0),
+    day date not null default current_date,
+    thread_id uuid not null,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 3. Time Entries (ledger rows; ended_at IS NULL = currently running timer)
+create unique index if not exists idx_tasks_one_title_per_day
+    on public.tasks (user_id, day, lower(regexp_replace(trim(title), '\s+', ' ', 'g')));
+create index if not exists idx_tasks_user_day on public.tasks (user_id, day desc);
+create index if not exists idx_tasks_thread on public.tasks (user_id, thread_id);
+
+-- 3. Time Entries = sessions of a task (ended_at IS NULL = currently running timer)
 create table if not exists public.time_entries (
     id uuid primary key default uuid_generate_v4(),
     user_id uuid references auth.users(id) on delete cascade not null default auth.uid(),
-    task_id uuid references public.tasks(id) on delete set null,
+    task_id uuid not null references public.tasks(id) on delete cascade,
     project_id uuid references public.projects(id) on delete set null,
     description text not null default '',
     started_at timestamp with time zone not null,
@@ -76,5 +82,15 @@ create policy "Users manage own time entries"
     using (auth.uid() = user_id)
     with check (auth.uid() = user_id);
 
--- Enable Realtime for cross-device timer sync (safe to re-run)
-alter publication supabase_realtime add table public.time_entries;
+-- Enable Realtime for cross-device sync (safe to re-run)
+do $$
+begin
+    alter publication supabase_realtime add table public.time_entries;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+    alter publication supabase_realtime add table public.tasks;
+exception when duplicate_object then null;
+end $$;
