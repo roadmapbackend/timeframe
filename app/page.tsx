@@ -8,6 +8,7 @@ import { ManualEntryModal } from '@/components/tracker/ManualEntryModal';
 import { SplitEntryModal } from '@/components/tracker/SplitEntryModal';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskPanel } from '@/components/tasks/TaskPanel';
+import { CalendarHistory } from '@/components/tasks/CalendarHistory';
 import { stripWindowForDay } from '@/components/tasks/DayStrip';
 import { useTracker } from '@/hooks/useTracker';
 import { useProjects } from '@/hooks/useProjects';
@@ -32,7 +33,6 @@ export default function DashboardPage() {
   const [showGaps, setShowGaps] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [splitTarget, setSplitTarget] = useState<TimeEntry | null>(null);
-  const [earlierDays, setEarlierDays] = useState(0);
   const [today, setToday] = useState<string>('');
 
   // Local date is only known in the browser
@@ -129,12 +129,6 @@ export default function DashboardPage() {
     return list;
   }, [todaysSessions]);
   const untrackedSeconds = gaps.reduce((s, g) => s + g.seconds, 0);
-
-  const pastDays = useMemo(
-    () => Array.from(tasksByDay.keys()).filter((d) => today && d < today).sort().reverse(),
-    [tasksByDay, today]
-  );
-  const visiblePastDays = pastDays.slice(0, earlierDays);
 
   // Latest card of each thread, for ⌘K
   const recentThreads = useMemo(() => {
@@ -296,46 +290,14 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {pastDays.length > 0 && (
-          <section className="space-y-8">
-            {visiblePastDays.map((day) => {
-              const list = tasksByDay.get(day) || [];
-              const total = list.reduce((s, t) => s + taskSeconds(t.id), 0);
-              return (
-                <div key={day} className="space-y-3">
-                  <div className="flex items-baseline justify-between">
-                    <h2 className="text-sm font-medium">{formatDayLabel(day)}</h2>
-                    <span className="font-mono text-sm tabular-nums text-muted-foreground">
-                      {formatReadableDuration(total)}
-                    </span>
-                  </div>
-                  {renderCards(day, list)}
-                </div>
-              );
-            })}
-
-            <div className="flex items-center gap-4">
-              {earlierDays < pastDays.length && (
-                <button
-                  type="button"
-                  onClick={() => setEarlierDays((n) => n + 7)}
-                  className="text-sm text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  {earlierDays === 0 ? 'Earlier days ›' : 'Show more ›'}
-                </button>
-              )}
-              {earlierDays > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setEarlierDays(0)}
-                  className="text-sm text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  Hide earlier days
-                </button>
-              )}
-            </div>
-          </section>
-        )}
+        <CalendarHistory
+          today={today}
+          tasksByDay={tasksByDay}
+          projectMap={projectMap}
+          taskSeconds={taskSeconds}
+          onOpenTask={(id) => openTask(id)}
+          onResumeTask={(t) => resume(t)}
+        />
       </main>
 
       {selectedTask && (
