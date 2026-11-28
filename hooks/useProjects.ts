@@ -109,11 +109,27 @@ export function useProjects() {
     }
   }, []);
 
+  const deleteProject = useCallback(async (id: string) => {
+    setProjects((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(next));
+      }
+      return next;
+    });
+
+    const supabase = createClient();
+    if (supabase) {
+      await supabase.from('projects').delete().eq('id', id);
+    }
+  }, []);
+
   return {
     projects,
     activeProjects: projects.filter((p) => !p.is_archived),
     createProject,
     updateProject,
+    deleteProject,
     refreshProjects: loadProjects,
   };
 }

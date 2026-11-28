@@ -9,12 +9,12 @@ import { useTracker } from '@/hooks/useTracker';
 import { formatDayLabel, formatReadableDuration, parseDurationInput, todayKey } from '@/lib/utils';
 import { STUDIO_PALETTE } from '@/lib/constants';
 import { Task, TaskPriority } from '@/types';
-import { Play, Plus, Archive } from 'lucide-react';
+import { Play, Plus, Archive, Trash2 } from 'lucide-react';
 
 export default function TasksPage() {
   const router = useRouter();
   const tr = useTracker();
-  const { projects, createProject, updateProject } = useProjects();
+  const { projects, createProject, updateProject, deleteProject } = useProjects();
 
   const [title, setTitle] = useState('');
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -138,6 +138,15 @@ export default function TasksPage() {
                   className="p-1 rounded-full text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   <Archive className="w-3 h-3" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteProject(proj.id)}
+                  aria-label={`Delete ${proj.name}`}
+                  title="Delete project (keeps logged tasks & time)"
+                  className="p-1 rounded-full text-muted-foreground hover:text-saffron cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" aria-hidden="true" />
                 </button>
               </div>
             ))}
