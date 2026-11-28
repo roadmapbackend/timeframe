@@ -15,7 +15,7 @@ interface EditorialNavProps {
   onStopTimer?: () => void;
 }
 
-/* Morphing liquid-glass pill navbar: collapsed to timer/Tasks, expands on hover for 2s. */
+/* Fixed-position Apple/OriginOS-style morphing liquid-glass pill (1s hover linger, zero page shift). */
 export function EditorialNav({
   isCloudConnected,
   runningLabel,
@@ -49,7 +49,7 @@ export function EditorialNav({
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     closeTimerRef.current = setTimeout(() => {
       setIsExpanded(false);
-    }, 2000);
+    }, 1000);
   };
 
   const toggleTheme = () => {
@@ -82,30 +82,48 @@ export function EditorialNav({
 
   const isRunning = Boolean(runningLabel && onStopTimer);
 
-  return (
-    <div className="no-print sticky top-4 z-40 mt-4 flex justify-center px-4 pointer-events-none">
-      <nav
-        aria-label="Primary"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onFocus={handleMouseEnter}
-        className={`pointer-events-auto relative overflow-hidden border border-foreground/12 bg-card/65 backdrop-blur-2xl shadow-[0_10px_35px_rgb(0,0,0,0.08)] dark:shadow-[0_10px_35px_rgb(0,0,0,0.45)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          isExpanded
-            ? 'rounded-2xl px-5 py-2.5 scale-100'
-            : 'rounded-full px-4 py-2 scale-[0.98] hover:scale-100'
-        }`}
-      >
-        {/* Subtle liquid sheen */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/25 to-transparent dark:from-white/10"
-        />
+  // Explicit dimensions so width, height, and border-radius interpolate smoothly
+  const pillWidth = isExpanded
+    ? isRunning
+      ? 'w-[min(94vw,620px)]'
+      : 'w-[min(94vw,490px)]'
+    : isRunning
+    ? 'w-[156px]'
+    : 'w-[108px]';
 
-        {!isExpanded ? (
-          /* Collapsed single pill */
-          <div className="relative flex items-center justify-center">
+  const pillHeight = isExpanded ? 'h-[48px]' : 'h-[38px]';
+  const pillRadius = isExpanded ? 'rounded-[18px]' : 'rounded-[19px]';
+
+  return (
+    <>
+      {/* Fixed height spacer so the page never shifts when the pill morphs */}
+      <div className="no-print h-16 shrink-0" aria-hidden="true" />
+
+      <div className="no-print fixed top-4 inset-x-0 z-40 flex justify-center px-3 pointer-events-none">
+        <nav
+          aria-label="Primary"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onFocus={handleMouseEnter}
+          className={`pointer-events-auto relative overflow-hidden border border-foreground/12 bg-card/70 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.45)] transition-[width,height,border-radius,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${pillWidth} ${pillHeight} ${pillRadius}`}
+        >
+          {/* Liquid glass top sheen */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/30 to-transparent dark:from-white/10"
+          />
+
+          {/* Layer 1: Collapsed pill */}
+          <div
+            aria-hidden={isExpanded}
+            className={`absolute inset-0 flex items-center justify-center transition-[opacity,transform,filter] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+              isExpanded
+                ? 'opacity-0 scale-90 blur-[4px] pointer-events-none'
+                : 'opacity-100 scale-100 blur-0'
+            }`}
+          >
             {isRunning ? (
-              <div className="flex items-center gap-2.5 text-xs md:text-sm font-mono text-foreground">
+              <div className="flex items-center gap-2.5 text-xs md:text-sm font-mono text-foreground whitespace-nowrap">
                 <span
                   className="w-2 h-2 rounded-full bg-saffron animate-pulse shrink-0"
                   aria-hidden="true"
@@ -115,6 +133,7 @@ export function EditorialNav({
                 </span>
                 <button
                   type="button"
+                  tabIndex={isExpanded ? -1 : 0}
                   onClick={onStopTimer}
                   aria-label={`Stop ${runningLabel}`}
                   title={`Stop "${runningLabel}"`}
@@ -126,8 +145,9 @@ export function EditorialNav({
             ) : (
               <button
                 type="button"
+                tabIndex={isExpanded ? -1 : 0}
                 onClick={() => setIsExpanded(true)}
-                className="inline-flex items-center gap-2 text-xs md:text-sm font-medium text-foreground cursor-pointer px-1"
+                className="inline-flex items-center gap-2 text-xs md:text-sm font-medium text-foreground cursor-pointer px-2 whitespace-nowrap"
               >
                 <span
                   className="w-2 h-2 rounded-full bg-saffron shrink-0"
@@ -137,16 +157,24 @@ export function EditorialNav({
               </button>
             )}
           </div>
-        ) : (
-          /* Expanded floating navbar */
-          <div className="relative flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs sm:text-sm md:text-base">
-            <div className="flex items-center gap-3 sm:gap-5">
+
+          {/* Layer 2: Expanded floating navbar */}
+          <div
+            aria-hidden={!isExpanded}
+            className={`absolute inset-0 flex items-center justify-between px-4 sm:px-5 text-xs sm:text-sm whitespace-nowrap transition-[opacity,transform,filter] duration-350 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+              isExpanded
+                ? 'opacity-100 scale-100 blur-0 delay-75'
+                : 'opacity-0 scale-95 blur-[4px] pointer-events-none'
+            }`}
+          >
+            <div className="flex items-center gap-2 sm:gap-4">
               {links.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    tabIndex={isExpanded ? 0 : -1}
                     className={`px-2 py-1 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron ${
                       isActive
                         ? 'text-foreground font-semibold bg-foreground/8'
@@ -159,27 +187,27 @@ export function EditorialNav({
               })}
             </div>
 
-            <span className="h-4 w-px bg-foreground/15 hidden sm:block" aria-hidden="true" />
-
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               {isRunning && (
                 <button
                   type="button"
+                  tabIndex={isExpanded ? 0 : -1}
                   onClick={onStopTimer}
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-saffron/40 bg-card/80 text-xs md:text-sm font-mono text-foreground hover:border-saffron transition-colors cursor-pointer"
+                  className="hidden sm:inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-saffron/40 bg-card/80 text-xs font-mono text-foreground hover:border-saffron transition-colors cursor-pointer"
                   title={`Stop "${runningLabel}"`}
                 >
                   <span
-                    className="w-2 h-2 rounded-full bg-saffron animate-pulse"
+                    className="w-1.5 h-1.5 rounded-full bg-saffron animate-pulse"
                     aria-hidden="true"
                   />
                   <span className="tabular-nums">{formatDuration(elapsedSeconds)}</span>
-                  <Square className="w-3 h-3 fill-current text-saffron" aria-hidden="true" />
+                  <Square className="w-2.5 h-2.5 fill-current text-saffron" aria-hidden="true" />
                 </button>
               )}
 
               <button
                 type="button"
+                tabIndex={isExpanded ? 0 : -1}
                 onClick={toggleTheme}
                 aria-label={isDark ? 'Switch to light mode' : 'Switch to night mode'}
                 title={isDark ? 'Light mode' : 'Night mode'}
@@ -195,16 +223,17 @@ export function EditorialNav({
               {isCloudConnected && (
                 <button
                   type="button"
+                  tabIndex={isExpanded ? 0 : -1}
                   onClick={handleSignOut}
-                  className="font-mono text-[11px] md:text-xs uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
+                  className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
                 >
                   Sign out
                 </button>
               )}
             </div>
           </div>
-        )}
-      </nav>
-    </div>
+        </nav>
+      </div>
+    </>
   );
 }
