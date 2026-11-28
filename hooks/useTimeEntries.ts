@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useId } from 'react';
 import { TimeEntry, EntrySource, Task } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import { STORAGE_KEY_ENTRIES } from '@/lib/constants';
@@ -35,6 +35,7 @@ export function useTimeEntries() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const entriesRef = useRef<TimeEntry[]>([]);
+  const channelId = useId();
 
   const reportError = useCallback(
     (op: string, error: { message?: string; code?: string; hint?: string } | null) => {
@@ -138,7 +139,7 @@ export function useTimeEntries() {
     }
 
     const channel = supabase
-      .channel('time_entries_realtime')
+      .channel(`time_entries_realtime_${channelId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'time_entries' }, () => {
         loadEntries();
       })
@@ -148,7 +149,7 @@ export function useTimeEntries() {
       window.removeEventListener('focus', onFocus);
       supabase.removeChannel(channel);
     };
-  }, [loadEntries]);
+  }, [loadEntries, channelId]);
 
   /** Close whatever session is running (no discard rule: used when switching tasks) */
   const closeRunning = useCallback(

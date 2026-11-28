@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { Task, TaskPriority } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import { newId, normalizeTitle, todayKey } from '@/lib/utils';
@@ -17,6 +17,7 @@ export function useTasks() {
   const [syncError, setSyncError] = useState<string | null>(null);
   // Always-current copy so async flows can see tasks created moments ago
   const tasksRef = useRef<Task[]>([]);
+  const channelId = useId();
 
   const reportError = useCallback(
     (op: string, error: { message?: string; code?: string; hint?: string } | null) => {
@@ -73,7 +74,7 @@ export function useTasks() {
     const supabase = createClient();
     if (!supabase) return;
     const channel = supabase
-      .channel('tasks_realtime')
+      .channel(`tasks_realtime_${channelId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
         loadTasks();
       })
@@ -81,7 +82,7 @@ export function useTasks() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadTasks]);
+  }, [loadTasks, channelId]);
 
   const findTaskForDay = useCallback((day: string, title: string): Task | null => {
     const norm = normalizeTitle(title);
