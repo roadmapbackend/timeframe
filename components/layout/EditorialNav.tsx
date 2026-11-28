@@ -117,12 +117,12 @@ export function EditorialNav({
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           onFocus={handleMouseEnter}
-          className={`pointer-events-auto relative overflow-hidden border border-foreground/12 bg-card/70 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.45)] transition-[width,height,border-radius,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${pillWidth} ${pillHeight} ${pillRadius}`}
+          className={`pointer-events-auto relative overflow-hidden border border-foreground/12 bg-card/70 dark:bg-[#141210]/85 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.55)] transition-[width,height,border-radius,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${pillWidth} ${pillHeight} ${pillRadius}`}
         >
-          {/* Liquid glass top sheen */}
+          {/* Liquid glass top sheen (light mode only; dark mode stays smoked obsidian) */}
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/30 to-transparent dark:from-white/10"
+            className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/30 to-transparent dark:opacity-0"
           />
 
           {/* Layer 1: Collapsed pill */}
