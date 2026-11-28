@@ -29,12 +29,12 @@ export function DayStrip({ sessions, window, color, nowMs }: DayStripProps) {
         return (
           <span
             key={s.id}
-            className={`absolute inset-y-0 rounded-full ${s.ended_at ? '' : 'animate-pulse'}`}
+            className={`absolute inset-y-0 rounded-full border-r border-background ${s.ended_at ? '' : 'animate-pulse'}`}
             style={{
               left: `${Math.max(0, Math.min(100, left))}%`,
               width: `${Math.max(1.2, Math.min(100, width))}%`,
               backgroundColor: s.ended_at ? color || 'var(--muted-foreground)' : 'var(--saffron)',
-              opacity: s.ended_at ? 0.75 : 1,
+              opacity: 1,
             }}
           />
         );

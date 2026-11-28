@@ -43,7 +43,8 @@ export function ProjectTaskBreakdown({ items }: ProjectTaskBreakdownProps) {
               <button
                 type="button"
                 onClick={() => toggle(pKey)}
-                className="w-full grid grid-cols-12 items-center py-3 text-sm hover:bg-muted/40 text-left transition-colors cursor-pointer"
+                className="w-full grid grid-cols-12 items-center py-3 pl-2.5 text-sm hover:bg-muted/40 text-left transition-colors cursor-pointer border-l-2"
+                style={{ borderLeftColor: proj.color }}
               >
                 <div className="col-span-6 flex items-center gap-2 pr-3 min-w-0">
                   {isCollapsed ? (
@@ -62,11 +63,11 @@ export function ProjectTaskBreakdown({ items }: ProjectTaskBreakdownProps) {
                 </div>
 
                 <div className="col-span-3 flex items-center gap-2 pr-3">
-                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{
-                        width: `${Math.max(3, proj.percentage)}%`,
+                        width: `${Math.max(4, proj.percentage)}%`,
                         backgroundColor: proj.color,
                       }}
                     />
@@ -98,10 +99,13 @@ export function ProjectTaskBreakdown({ items }: ProjectTaskBreakdownProps) {
                       </div>
 
                       <div className="col-span-3 flex items-center gap-2 pr-3">
-                        <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-foreground/40 rounded-full"
-                            style={{ width: `${Math.max(2, task.percentage)}%` }}
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${Math.max(3, task.percentage)}%`,
+                              backgroundColor: `color-mix(in oklab, ${proj.color} 55%, var(--foreground))`,
+                            }}
                           />
                         </div>
                         <span className="font-mono text-[10px] text-muted-foreground w-8 text-right">

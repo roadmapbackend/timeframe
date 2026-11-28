@@ -129,8 +129,13 @@ export function useTimeEntries() {
   useEffect(() => {
     loadEntries();
 
+    const onFocus = () => loadEntries();
+    window.addEventListener('focus', onFocus);
+
     const supabase = createClient();
-    if (!supabase) return;
+    if (!supabase) {
+      return () => window.removeEventListener('focus', onFocus);
+    }
 
     const channel = supabase
       .channel('time_entries_realtime')
@@ -140,6 +145,7 @@ export function useTimeEntries() {
       .subscribe();
 
     return () => {
+      window.removeEventListener('focus', onFocus);
       supabase.removeChannel(channel);
     };
   }, [loadEntries]);
@@ -294,10 +300,11 @@ export function useTimeEntries() {
       commit((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates } : e)));
       const supabase = createClient();
       if (supabase) {
-        await supabase.from('time_entries').update(updates).eq('id', id);
+        const { error } = await supabase.from('time_entries').update(updates).eq('id', id);
+        if (error) reportError('update', error);
       }
     },
-    [commit]
+    [commit, reportError]
   );
 
   /** Delete a session (returns it so the caller can offer Undo) */
@@ -307,11 +314,12 @@ export function useTimeEntries() {
       commit((prev) => prev.filter((e) => e.id !== id));
       const supabase = createClient();
       if (supabase) {
-        await supabase.from('time_entries').delete().eq('id', id);
+        const { error } = await supabase.from('time_entries').delete().eq('id', id);
+        if (error) reportError('delete', error);
       }
       return target;
     },
-    [commit]
+    [commit, reportError]
   );
 
   const restoreEntry = useCallback(

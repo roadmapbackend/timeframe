@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { DailyStackedDay } from '@/hooks/useAnalytics';
 import { formatReadableDuration } from '@/lib/utils';
 
@@ -10,19 +10,46 @@ interface StackedDailyChartProps {
 
 /* Single stacked-by-project daily bar chart for week and month views. */
 export function StackedDailyChart({ days }: StackedDailyChartProps) {
+  const legend = useMemo(() => {
+    const map = new Map<string, { name: string; color: string }>();
+    days.forEach((d) => {
+      d.segments.forEach((s) => {
+        const key = s.projectId || '__untagged__';
+        if (!map.has(key)) map.set(key, { name: s.name, color: s.color });
+      });
+    });
+    return Array.from(map.entries()).map(([key, val]) => ({ key, ...val }));
+  }, [days]);
+
   if (days.length === 0) return null;
 
   const maxSeconds = Math.max(3600, ...days.map((d) => d.totalSeconds));
 
   return (
     <div className="border-t border-foreground/15 pt-8 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
           ( Daily hours by project )
         </span>
-        <span className="font-mono text-[11px] text-muted-foreground">
-          max {(maxSeconds / 3600).toFixed(1)}h
-        </span>
+
+        <div className="flex flex-wrap items-center gap-4">
+          {legend.map((item) => (
+            <span
+              key={item.key}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+            >
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: item.color }}
+                aria-hidden="true"
+              />
+              <span>{item.name}</span>
+            </span>
+          ))}
+          <span className="font-mono text-[11px] text-muted-foreground">
+            max {(maxSeconds / 3600).toFixed(1)}h
+          </span>
+        </div>
       </div>
 
       <div className="h-40 flex items-end gap-1.5 pt-2">
@@ -42,7 +69,7 @@ export function StackedDailyChart({ days }: StackedDailyChartProps) {
               title={tooltipText}
             >
               <div
-                className="w-full max-w-[32px] rounded-t-xs overflow-hidden flex flex-col-reverse transition-all"
+                className="w-full max-w-[32px] rounded-t-xs overflow-hidden flex flex-col-reverse gap-[1px] transition-all"
                 style={{
                   height: day.totalSeconds > 0 ? `${Math.max(4, totalPct)}%` : '2px',
                   backgroundColor:

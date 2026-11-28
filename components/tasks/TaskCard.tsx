@@ -50,9 +50,17 @@ export function TaskCard({
       className={`group relative flex flex-col gap-4 rounded-xl border bg-card text-card-foreground p-4 cursor-pointer transition-[box-shadow,border-color] hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron ${
         isRunning ? 'border-saffron/50' : 'border-border hover:border-foreground/20'
       }`}
+      style={
+        project
+          ? {
+              borderLeftWidth: '3px',
+              borderLeftColor: project.color,
+            }
+          : undefined
+      }
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
+        <div className="min-w-0 space-y-1.5">
           <div className="flex items-center gap-2">
             <span
               className="w-2 h-2 rounded-full shrink-0"
@@ -61,11 +69,26 @@ export function TaskCard({
             />
             <h3 className="text-sm font-medium truncate">{task.title}</h3>
           </div>
-          <p className="text-xs text-muted-foreground truncate pl-4">
-            {[project?.name, task.priority !== 'medium' ? `${task.priority} priority` : null]
-              .filter(Boolean)
-              .join(' · ') || 'No project'}
-          </p>
+          <div className="flex items-center gap-2 pl-4 min-w-0">
+            {project ? (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono truncate"
+                style={{
+                  backgroundColor: `color-mix(in oklab, ${project.color} 12%, transparent)`,
+                  color: project.color,
+                }}
+              >
+                {project.name}
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">No project</span>
+            )}
+            {task.priority !== 'medium' && (
+              <span className="text-xs text-muted-foreground truncate">
+                · {task.priority} priority
+              </span>
+            )}
+          </div>
         </div>
 
         <button

@@ -51,6 +51,14 @@ export function ProjectDotPicker({
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono border border-border hover:border-foreground/40 text-foreground transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
+        style={
+          selected
+            ? {
+                backgroundColor: `color-mix(in oklab, ${selected.color} 12%, transparent)`,
+                borderColor: `color-mix(in oklab, ${selected.color} 35%, transparent)`,
+              }
+            : undefined
+        }
         title="Attach or change project"
       >
         {selected ? (

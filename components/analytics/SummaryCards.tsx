@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { AnalyticsSummary, TimePeriod } from '@/types';
+import { formatReadableDuration } from '@/lib/utils';
 
 interface SummaryCardsProps {
   summary: AnalyticsSummary;
@@ -10,10 +11,10 @@ interface SummaryCardsProps {
 
 /* Hairline-separated editorial summary metrics. */
 export function SummaryCards({ summary, period }: SummaryCardsProps) {
-  const avgOverActiveDays =
+  const avgSecondsPerActiveDay =
     summary.activeDays > 0
-      ? (summary.totalSeconds / 3600 / summary.activeDays).toFixed(1)
-      : '0.0';
+      ? Math.round(summary.totalSeconds / summary.activeDays)
+      : 0;
 
   const totalSourceSeconds = summary.timerSeconds + summary.manualSeconds;
   const manualPct =
@@ -27,11 +28,15 @@ export function SummaryCards({ summary, period }: SummaryCardsProps) {
         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground block">
           Total logged
         </span>
-        <div className="mt-2 flex items-baseline gap-1.5">
+        <div className="mt-2 flex items-baseline gap-2">
           <span className="font-display text-3xl sm:text-4xl font-medium tabular-nums text-foreground">
-            {summary.totalHours}
+            {summary.totalSeconds > 0 ? formatReadableDuration(summary.totalSeconds) : '0m'}
           </span>
-          <span className="font-mono text-xs text-muted-foreground">hrs</span>
+          {summary.totalSeconds >= 3600 && (
+            <span className="font-mono text-xs text-muted-foreground">
+              ({summary.totalHours}h)
+            </span>
+          )}
         </div>
         <p className="font-mono text-[11px] text-muted-foreground mt-2">
           {summary.entryCount} entries · {manualPct}% manual
@@ -42,11 +47,11 @@ export function SummaryCards({ summary, period }: SummaryCardsProps) {
         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground block">
           Daily average
         </span>
-        <div className="mt-2 flex items-baseline gap-1.5">
+        <div className="mt-2 flex items-baseline gap-2">
           <span className="font-display text-3xl sm:text-4xl font-medium tabular-nums text-foreground">
-            {avgOverActiveDays}
+            {avgSecondsPerActiveDay > 0 ? formatReadableDuration(avgSecondsPerActiveDay) : '0m'}
           </span>
-          <span className="font-mono text-xs text-muted-foreground">hrs/day</span>
+          <span className="font-mono text-xs text-muted-foreground">/ day</span>
         </div>
         <p className="font-mono text-[11px] text-muted-foreground mt-2">
           {summary.activeDays > 0

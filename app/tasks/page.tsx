@@ -7,6 +7,7 @@ import { ProjectDotPicker } from '@/components/projects/ProjectDotPicker';
 import { useProjects } from '@/hooks/useProjects';
 import { useTracker } from '@/hooks/useTracker';
 import { formatDayLabel, formatReadableDuration, parseDurationInput, todayKey } from '@/lib/utils';
+import { STUDIO_PALETTE } from '@/lib/constants';
 import { Task, TaskPriority } from '@/types';
 import { Play, Plus, Archive } from 'lucide-react';
 
@@ -101,7 +102,18 @@ export default function TasksPage() {
                   proj.is_archived ? 'bg-muted/50 text-muted-foreground' : 'bg-muted'
                 }`}
               >
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: proj.color }} aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idx = STUDIO_PALETTE.findIndex((c) => c.hex === proj.color);
+                    const nextColor = STUDIO_PALETTE[(idx + 1) % STUDIO_PALETTE.length].hex;
+                    updateProject(proj.id, { color: nextColor });
+                  }}
+                  className="w-2.5 h-2.5 rounded-full shrink-0 cursor-pointer hover:scale-125 transition-transform"
+                  style={{ backgroundColor: proj.color }}
+                  title="Click to cycle project color"
+                  aria-label={`Change color for ${proj.name}`}
+                />
                 <span>{proj.name}</span>
                 <button
                   type="button"
