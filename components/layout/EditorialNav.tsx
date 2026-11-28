@@ -107,8 +107,8 @@ export function EditorialNav({
       {/* Fixed height spacer so the page never shifts when the pill morphs */}
       <div className="no-print h-16 shrink-0" aria-hidden="true" />
 
-      <div className="no-print fixed top-4 inset-x-0 z-40 flex items-center justify-center gap-3 px-3 pointer-events-none">
-        {/* Main Morphing Navigation Pill */}
+      <div className="no-print fixed top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+        {/* Main Morphing Navigation Pill (always dead-center) */}
         <nav
           aria-label="Primary"
           onMouseEnter={handleMouseEnter}
@@ -203,29 +203,29 @@ export function EditorialNav({
             </div>
           </div>
         </nav>
-
-        {/* Separate Floating Timer Pill next to the navbar */}
-        {isRunning && (
-          <div className="pointer-events-auto h-[38px] px-3 rounded-full border border-saffron/40 bg-card/75 dark:bg-[#141210]/90 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.55)] flex items-center gap-2.5 text-xs md:text-sm font-mono text-foreground whitespace-nowrap">
-            <span
-              className="w-2 h-2 rounded-full bg-saffron animate-pulse shrink-0"
-              aria-hidden="true"
-            />
-            <span className="tabular-nums font-medium">
-              {formatDuration(elapsedSeconds)}
-            </span>
-            <button
-              type="button"
-              onClick={onStopTimer}
-              aria-label={`Stop ${runningLabel}`}
-              title={`Stop "${runningLabel}"`}
-              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron text-saffron-foreground hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              <Square className="w-2.5 h-2.5 fill-current" aria-hidden="true" />
-            </button>
-          </div>
-        )}
       </div>
+
+      {/* Separate Floating Timer Pill anchored top-right */}
+      {isRunning && (
+        <div className="no-print fixed top-4 right-4 sm:right-8 z-40 h-[38px] px-3 rounded-full border border-saffron/40 bg-card/75 dark:bg-[#141210]/90 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.55)] flex items-center gap-2.5 text-xs md:text-sm font-mono text-foreground whitespace-nowrap">
+          <span
+            className="w-2 h-2 rounded-full bg-saffron animate-pulse shrink-0"
+            aria-hidden="true"
+          />
+          <span className="tabular-nums font-medium">
+            {formatDuration(elapsedSeconds)}
+          </span>
+          <button
+            type="button"
+            onClick={onStopTimer}
+            aria-label={`Stop ${runningLabel}`}
+            title={`Stop "${runningLabel}"`}
+            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron text-saffron-foreground hover:opacity-90 transition-opacity cursor-pointer"
+          >
+            <Square className="w-2.5 h-2.5 fill-current" aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </>
   );
 }
