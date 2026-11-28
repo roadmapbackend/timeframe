@@ -52,7 +52,7 @@ export function StackedDailyChart({ days }: StackedDailyChartProps) {
         </div>
       </div>
 
-      <div className="h-40 flex items-end gap-1.5 pt-2">
+      <div className="h-44 md:h-56 flex items-end gap-2 pt-2">
         {days.map((day) => {
           const totalPct = Math.round((day.totalSeconds / maxSeconds) * 100);
           const tooltipText =
@@ -96,7 +96,7 @@ export function StackedDailyChart({ days }: StackedDailyChartProps) {
                 })}
               </div>
 
-              <span className="font-mono text-[10px] text-muted-foreground mt-2 truncate max-w-full">
+              <span className="font-mono text-[11px] md:text-xs text-muted-foreground mt-2 truncate max-w-full">
                 {day.label}
               </span>
             </div>

@@ -70,7 +70,7 @@ export default function AnalyticsPage() {
               </button>
             </div>
 
-            <p className="font-mono text-xs text-muted-foreground">
+            <p className="font-mono text-xs md:text-sm text-muted-foreground">
               {summary.totalHours}h logged · {deltaSign}
               {deltaRounded}h vs previous {period}
             </p>
@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
                   setPeriod(p.value);
                   setOffset(0);
                 }}
-                className={`px-3.5 py-1 rounded-full text-xs transition-colors cursor-pointer ${
+                className={`px-3.5 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm transition-colors cursor-pointer ${
                   period === p.value
                     ? 'bg-saffron text-saffron-foreground font-medium'
                     : 'text-muted-foreground hover:text-foreground'

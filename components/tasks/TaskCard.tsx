@@ -47,7 +47,7 @@ export function TaskCard({
           onOpen();
         }
       }}
-      className={`group relative flex flex-col gap-4 rounded-xl border bg-card text-card-foreground p-4 cursor-pointer transition-[box-shadow,border-color] hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron ${
+      className={`group relative flex flex-col gap-4 rounded-xl border bg-card text-card-foreground p-4 md:p-5 cursor-pointer transition-[box-shadow,border-color] hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron ${
         isRunning ? 'border-saffron/50' : 'border-border hover:border-foreground/20'
       }`}
       style={
@@ -63,16 +63,16 @@ export function TaskCard({
         <div className="min-w-0 space-y-1.5">
           <div className="flex items-center gap-2">
             <span
-              className="w-2 h-2 rounded-full shrink-0"
+              className="w-2.5 h-2.5 rounded-full shrink-0"
               style={{ backgroundColor: project?.color || 'var(--border)' }}
               aria-hidden="true"
             />
-            <h3 className="text-sm font-medium truncate">{task.title}</h3>
+            <h3 className="text-sm md:text-base font-medium truncate">{task.title}</h3>
           </div>
           <div className="flex items-center gap-2 pl-4 min-w-0">
             {project ? (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono truncate"
+                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono truncate"
                 style={{
                   backgroundColor: `color-mix(in oklab, ${project.color} 12%, transparent)`,
                   color: project.color,
@@ -81,10 +81,10 @@ export function TaskCard({
                 {project.name}
               </span>
             ) : (
-              <span className="text-xs text-muted-foreground">No project</span>
+              <span className="text-xs md:text-sm text-muted-foreground">No project</span>
             )}
             {task.priority !== 'medium' && (
-              <span className="text-xs text-muted-foreground truncate">
+              <span className="text-xs md:text-sm text-muted-foreground truncate">
                 · {task.priority} priority
               </span>
             )}
@@ -117,11 +117,11 @@ export function TaskCard({
       <div className="space-y-2.5">
         <div className="flex items-baseline justify-between">
           <span
-            className={`font-mono tabular-nums text-lg ${isRunning ? 'text-saffron' : 'text-foreground'}`}
+            className={`font-mono tabular-nums text-lg md:text-xl ${isRunning ? 'text-saffron' : 'text-foreground'}`}
           >
             {isRunning ? formatDuration(totalSeconds) : formatReadableDuration(totalSeconds)}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs md:text-sm text-muted-foreground">
             {count === 0 ? 'Not started' : `${count} ${count === 1 ? 'session' : 'sessions'}`}
           </span>
         </div>

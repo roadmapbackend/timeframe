@@ -70,10 +70,10 @@ export function EditorialNav({
       <div className="flex items-center gap-3">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 font-display text-base font-semibold tracking-tight text-foreground hover:opacity-80 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
+          className="inline-flex items-center gap-2 font-display text-base md:text-lg font-semibold tracking-tight text-foreground hover:opacity-80 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
         >
           <span
-            className="w-2 h-2 rounded-full bg-saffron shrink-0"
+            className="w-2.5 h-2.5 rounded-full bg-saffron shrink-0"
             aria-hidden="true"
           />
           <span>Timeframe</span>
@@ -83,18 +83,18 @@ export function EditorialNav({
           <button
             type="button"
             onClick={onStopTimer}
-            className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-saffron/40 bg-card text-xs font-mono text-foreground hover:border-saffron transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-saffron/40 bg-card text-xs md:text-sm font-mono text-foreground hover:border-saffron transition-colors cursor-pointer"
             title={`Stop "${runningLabel}"`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-saffron animate-pulse" aria-hidden="true" />
+            <span className="w-2 h-2 rounded-full bg-saffron animate-pulse" aria-hidden="true" />
             <span className="tabular-nums">{formatDuration(elapsedSeconds)}</span>
-            <Square className="w-2.5 h-2.5 fill-current text-saffron" aria-hidden="true" />
+            <Square className="w-3 h-3 fill-current text-saffron" aria-hidden="true" />
           </button>
         )}
       </div>
 
       {/* Plain text links */}
-      <div className="flex items-center gap-5 sm:gap-7 text-xs sm:text-sm">
+      <div className="flex items-center gap-5 sm:gap-7 text-xs sm:text-sm md:text-base">
         {links.map((item) => {
           const isActive = pathname === item.href;
           return (

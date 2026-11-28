@@ -27,7 +27,7 @@ export function ProjectTaskBreakdown({ items }: ProjectTaskBreakdownProps) {
 
   return (
     <div className="border-t border-foreground/15">
-      <div className="grid grid-cols-12 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground py-3 border-b border-border">
+      <div className="grid grid-cols-12 font-mono text-[11px] md:text-xs uppercase tracking-[0.16em] text-muted-foreground py-3 border-b border-border">
         <div className="col-span-6">Project / Task</div>
         <div className="col-span-3">Share</div>
         <div className="col-span-3 text-right">Actual / Est</div>
@@ -43,17 +43,17 @@ export function ProjectTaskBreakdown({ items }: ProjectTaskBreakdownProps) {
               <button
                 type="button"
                 onClick={() => toggle(pKey)}
-                className="w-full grid grid-cols-12 items-center py-3 pl-2.5 text-sm hover:bg-muted/40 text-left transition-colors cursor-pointer border-l-2"
+                className="w-full grid grid-cols-12 items-center py-3.5 pl-3 text-sm md:text-base hover:bg-muted/40 text-left transition-colors cursor-pointer border-l-2"
                 style={{ borderLeftColor: proj.color }}
               >
-                <div className="col-span-6 flex items-center gap-2 pr-3 min-w-0">
+                <div className="col-span-6 flex items-center gap-2.5 pr-3 min-w-0">
                   {isCollapsed ? (
-                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   ) : (
-                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                    <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   )}
                   <span
-                    className="w-2 h-2 rounded-full shrink-0"
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: proj.color }}
                     aria-hidden="true"
                   />
@@ -62,8 +62,8 @@ export function ProjectTaskBreakdown({ items }: ProjectTaskBreakdownProps) {
                   </span>
                 </div>
 
-                <div className="col-span-3 flex items-center gap-2 pr-3">
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div className="col-span-3 flex items-center gap-2.5 pr-3">
+                  <div className="flex-1 h-2 md:h-2.5 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -72,7 +72,7 @@ export function ProjectTaskBreakdown({ items }: ProjectTaskBreakdownProps) {
                       }}
                     />
                   </div>
-                  <span className="font-mono text-[11px] text-muted-foreground w-8 text-right">
+                  <span className="font-mono text-xs text-muted-foreground w-9 text-right">
                     {proj.percentage}%
                   </span>
                 </div>
@@ -92,14 +92,14 @@ export function ProjectTaskBreakdown({ items }: ProjectTaskBreakdownProps) {
                   return (
                     <div
                       key={task.key}
-                      className="grid grid-cols-12 items-center pl-8 pr-1 py-2.5 text-xs bg-muted/25 border-t border-border/60"
+                      className="grid grid-cols-12 items-center pl-9 pr-1 py-3 text-xs md:text-sm bg-muted/25 border-t border-border/60"
                     >
                       <div className="col-span-6 pr-3 truncate text-foreground/85">
                         {task.title}
                       </div>
 
-                      <div className="col-span-3 flex items-center gap-2 pr-3">
-                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="col-span-3 flex items-center gap-2.5 pr-3">
+                        <div className="flex-1 h-1.5 md:h-2 bg-muted rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full"
                             style={{
@@ -108,12 +108,12 @@ export function ProjectTaskBreakdown({ items }: ProjectTaskBreakdownProps) {
                             }}
                           />
                         </div>
-                        <span className="font-mono text-[10px] text-muted-foreground w-8 text-right">
+                        <span className="font-mono text-[11px] md:text-xs text-muted-foreground w-9 text-right">
                           {task.percentage}%
                         </span>
                       </div>
 
-                      <div className="col-span-3 text-right font-mono tabular-nums text-xs text-foreground/85">
+                      <div className="col-span-3 text-right font-mono tabular-nums text-xs md:text-sm text-foreground/85">
                         <span>{formatReadableDuration(task.seconds)}</span>
                         {hasEstimate && (
                           <span

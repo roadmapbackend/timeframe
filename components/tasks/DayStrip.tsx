@@ -20,7 +20,7 @@ export function DayStrip({ sessions, window, color, nowMs }: DayStripProps) {
   const span = Math.max(1, window.endMs - window.startMs);
 
   return (
-    <div className="relative h-1.5 rounded-full bg-muted overflow-hidden" aria-hidden="true">
+    <div className="relative h-1.5 md:h-2 rounded-full bg-muted overflow-hidden" aria-hidden="true">
       {sessions.map((s) => {
         const start = new Date(s.started_at).getTime();
         const end = s.ended_at ? new Date(s.ended_at).getTime() : nowMs;

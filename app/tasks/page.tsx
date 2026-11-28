@@ -22,6 +22,7 @@ export default function TasksPage() {
   const [estimateInput, setEstimateInput] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
 
   // One row per thread (the same task across days), newest activity first
   const threads = useMemo(() => {
@@ -94,11 +95,11 @@ export default function TasksPage() {
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             {visibleProjects.map((proj) => (
               <div
                 key={proj.id}
-                className={`inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full text-xs ${
+                className={`inline-flex items-center gap-2.5 pl-3.5 pr-2 py-1.5 md:pl-4 md:pr-2.5 md:py-2 rounded-full text-xs md:text-sm ${
                   proj.is_archived ? 'bg-muted/50 text-muted-foreground' : 'bg-muted'
                 }`}
               >
@@ -109,12 +110,12 @@ export default function TasksPage() {
                     const nextColor = STUDIO_PALETTE[(idx + 1) % STUDIO_PALETTE.length].hex;
                     updateProject(proj.id, { color: nextColor });
                   }}
-                  className="w-2.5 h-2.5 rounded-full shrink-0 cursor-pointer hover:scale-125 transition-transform"
+                  className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full shrink-0 cursor-pointer hover:scale-125 transition-transform"
                   style={{ backgroundColor: proj.color }}
                   title="Click to cycle project color"
                   aria-label={`Change color for ${proj.name}`}
                 />
-                <span>{proj.name}</span>
+                <span className="font-medium">{proj.name}</span>
                 <button
                   type="button"
                   onClick={() =>
@@ -123,8 +124,8 @@ export default function TasksPage() {
                       hourly_rate: proj.hourly_rate ?? 1000,
                     })
                   }
-                  className={`px-1.5 py-0.5 rounded-full cursor-pointer ${
-                    proj.is_billable ? 'text-saffron' : 'text-muted-foreground hover:text-foreground'
+                  className={`px-2 py-0.5 rounded-full text-xs cursor-pointer ${
+                    proj.is_billable ? 'text-saffron font-medium' : 'text-muted-foreground hover:text-foreground'
                   }`}
                   title={proj.is_billable ? 'Billable (click to toggle)' : 'Mark billable'}
                 >
@@ -135,18 +136,18 @@ export default function TasksPage() {
                   onClick={() => updateProject(proj.id, { is_archived: !proj.is_archived })}
                   aria-label={proj.is_archived ? 'Unarchive project' : 'Archive project'}
                   title={proj.is_archived ? 'Unarchive' : 'Archive'}
-                  className="p-1 rounded-full text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="p-1.5 rounded-full text-muted-foreground hover:text-foreground cursor-pointer"
                 >
-                  <Archive className="w-3 h-3" aria-hidden="true" />
+                  <Archive className="w-3.5 h-3.5 md:w-4 md:h-4" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
-                  onClick={() => deleteProject(proj.id)}
+                  onClick={() => setProjectToDelete({ id: proj.id, name: proj.name })}
                   aria-label={`Delete ${proj.name}`}
                   title="Delete project (keeps logged tasks & time)"
-                  className="p-1 rounded-full text-muted-foreground hover:text-saffron cursor-pointer"
+                  className="p-1.5 rounded-full text-muted-foreground hover:text-saffron cursor-pointer"
                 >
-                  <Trash2 className="w-3 h-3" aria-hidden="true" />
+                  <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" aria-hidden="true" />
                 </button>
               </div>
             ))}
@@ -157,7 +158,7 @@ export default function TasksPage() {
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 placeholder="+ New project"
-                className="text-xs px-3 py-1.5 rounded-full bg-transparent hover:bg-muted focus:bg-muted focus:outline-none w-32 placeholder:text-muted-foreground"
+                className="text-xs md:text-sm px-3.5 py-1.5 md:py-2 rounded-full bg-transparent hover:bg-muted focus:bg-muted focus:outline-none w-36 md:w-40 placeholder:text-muted-foreground"
               />
               {newProjectName.trim() && (
                 <button
@@ -232,16 +233,21 @@ export default function TasksPage() {
                     tabIndex={0}
                     onClick={() => router.push(`/?task=${latest.id}`)}
                     onKeyDown={(e) => e.key === 'Enter' && router.push(`/?task=${latest.id}`)}
-                    className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 cursor-pointer hover:border-foreground/20 hover:shadow-sm transition-[box-shadow,border-color]"
+                    className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5 cursor-pointer hover:border-foreground/20 hover:shadow-sm transition-[box-shadow,border-color]"
+                    style={
+                      proj
+                        ? { borderLeftWidth: '3px', borderLeftColor: proj.color }
+                        : undefined
+                    }
                   >
                     <span
-                      className="w-2 h-2 rounded-full shrink-0"
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: proj?.color || 'var(--border)' }}
                       aria-hidden="true"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{latest.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-sm md:text-base font-medium truncate">{latest.title}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground truncate">
                         {[
                           proj?.name,
                           latest.priority !== 'medium' ? `${latest.priority} priority` : null,
@@ -253,7 +259,7 @@ export default function TasksPage() {
                       </p>
                     </div>
                     <span
-                      className={`font-mono text-xs tabular-nums ${est && seconds > est ? 'text-saffron' : 'text-foreground/85'}`}
+                      className={`font-mono text-xs md:text-sm tabular-nums ${est && seconds > est ? 'text-saffron' : 'text-foreground/85'}`}
                     >
                       {formatReadableDuration(seconds)}
                       {est ? <span className="text-muted-foreground"> / {formatReadableDuration(est)}</span> : null}
@@ -277,6 +283,48 @@ export default function TasksPage() {
           )}
         </section>
       </main>
+
+      {projectToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md bg-card text-card-foreground border border-border rounded-lg shadow-xl p-6 space-y-5">
+            <div className="space-y-2">
+              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground block">
+                ( Delete project )
+              </span>
+              <h2 className="font-display text-xl font-medium text-foreground">
+                Delete &ldquo;{projectToDelete.name}&rdquo;?
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Your logged tasks and time entries will be kept—only the project tag is removed.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setProjectToDelete(null)}
+                className="px-4 py-2 text-xs md:text-sm text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = projectToDelete.id;
+                  setProjectToDelete(null);
+                  await deleteProject(id);
+                }}
+                className="px-4 py-2 rounded-full text-xs md:text-sm font-medium bg-saffron text-saffron-foreground hover:opacity-90 cursor-pointer"
+              >
+                Delete project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
