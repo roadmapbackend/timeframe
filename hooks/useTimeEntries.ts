@@ -47,14 +47,22 @@ export function useTimeEntries() {
     []
   );
 
-  const commit = useCallback((updater: (prev: TimeEntry[]) => TimeEntry[]) => {
-    const next = updater(entriesRef.current).sort(byStartDesc);
-    entriesRef.current = next;
-    setEntries(next);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(next));
-    }
-  }, []);
+  const commit = useCallback(
+    (updater: (prev: TimeEntry[]) => TimeEntry[]) => {
+      const next = updater(entriesRef.current).sort(byStartDesc);
+      entriesRef.current = next;
+      setEntries(next);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(next));
+        window.dispatchEvent(
+          new CustomEvent('timeframe:entries-sync', {
+            detail: { sourceId: channelId, next },
+          })
+        );
+      }
+    },
+    [channelId]
+  );
 
   const runningEntry = useMemo(
     () => entries.find((e) => e.ended_at === null) || null,
@@ -131,11 +139,23 @@ export function useTimeEntries() {
     loadEntries();
 
     const onFocus = () => loadEntries();
+    const onLocalSync = (ev: Event) => {
+      const { sourceId, next } = (
+        ev as CustomEvent<{ sourceId: string; next: TimeEntry[] }>
+      ).detail;
+      if (sourceId === channelId) return;
+      entriesRef.current = next;
+      setEntries(next);
+    };
     window.addEventListener('focus', onFocus);
+    window.addEventListener('timeframe:entries-sync', onLocalSync);
 
     const supabase = createClient();
     if (!supabase) {
-      return () => window.removeEventListener('focus', onFocus);
+      return () => {
+        window.removeEventListener('focus', onFocus);
+        window.removeEventListener('timeframe:entries-sync', onLocalSync);
+      };
     }
 
     const channel = supabase
@@ -147,6 +167,7 @@ export function useTimeEntries() {
 
     return () => {
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('timeframe:entries-sync', onLocalSync);
       supabase.removeChannel(channel);
     };
   }, [loadEntries, channelId]);
