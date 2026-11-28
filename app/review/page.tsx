@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { EditorialNav } from '@/components/layout/EditorialNav';
 import { useTimeEntries } from '@/hooks/useTimeEntries';
 import { useProjects } from '@/hooks/useProjects';
 import { useTasks } from '@/hooks/useTasks';
@@ -133,13 +132,6 @@ export default function WeeklyReviewPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <EditorialNav
-        isCloudConnected={isCloudConnected}
-        runningLabel={runningEntry?.description || null}
-        elapsedSeconds={elapsedSeconds}
-        onStopTimer={() => stopTimer()}
-      />
-
       <main className="flex-1 mx-auto w-full max-w-6xl px-5 sm:px-10 py-10 sm:py-16 space-y-12">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-4">

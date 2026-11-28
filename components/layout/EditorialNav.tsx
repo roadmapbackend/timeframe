@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { formatDuration } from '@/lib/utils';
+import { useTimeEntries } from '@/hooks/useTimeEntries';
 import { Sun, Moon, Square } from 'lucide-react';
 
 interface EditorialNavProps {
-  isCloudConnected: boolean;
+  isCloudConnected?: boolean;
   onOpenPalette?: () => void;
   runningLabel?: string | null;
   elapsedSeconds?: number;
@@ -17,13 +18,22 @@ interface EditorialNavProps {
 
 /* Fixed-position Apple/OriginOS-style morphing liquid-glass pill (1s hover linger, zero page shift). */
 export function EditorialNav({
-  isCloudConnected,
-  runningLabel,
-  elapsedSeconds = 0,
-  onStopTimer,
-}: EditorialNavProps) {
+  isCloudConnected: propCloudConnected,
+  runningLabel: propRunningLabel,
+  elapsedSeconds: propElapsedSeconds,
+  onStopTimer: propOnStopTimer,
+}: EditorialNavProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
+  const timeEntries = useTimeEntries();
+
+  const isCloudConnected = propCloudConnected ?? timeEntries.isCloudConnected;
+  const runningLabel =
+    propRunningLabel !== undefined
+      ? propRunningLabel
+      : timeEntries.runningEntry?.description || null;
+  const elapsedSeconds = propElapsedSeconds ?? timeEntries.elapsedSeconds;
+  const onStopTimer = propOnStopTimer ?? (() => timeEntries.stopTimer());
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -81,6 +91,8 @@ export function EditorialNav({
   ];
 
   const isRunning = Boolean(runningLabel && onStopTimer);
+
+  if (pathname.startsWith('/login')) return null;
 
   // Explicit dimensions so width, height, and border-radius interpolate smoothly
   const pillWidth = isExpanded

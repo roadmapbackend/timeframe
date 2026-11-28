@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { EditorialNav } from '@/components/layout/EditorialNav';
 import { ProjectDotPicker } from '@/components/projects/ProjectDotPicker';
 import { useProjects } from '@/hooks/useProjects';
 import { useTracker } from '@/hooks/useTracker';
@@ -72,13 +71,6 @@ export default function TasksPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <EditorialNav
-        isCloudConnected={tr.isCloudConnected}
-        runningLabel={tr.runningEntry?.description || null}
-        elapsedSeconds={tr.elapsedSeconds}
-        onStopTimer={() => tr.stopTimer()}
-      />
-
       <main className="flex-1 mx-auto w-full max-w-5xl px-5 sm:px-8 py-8 sm:py-12 space-y-10">
         <h1 className="text-2xl font-semibold tracking-tight">Tasks & projects</h1>
 

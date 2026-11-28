@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronDown, RotateCcw } from 'lucide-react';
-import { EditorialNav } from '@/components/layout/EditorialNav';
 import { CommandPalette } from '@/components/layout/CommandPalette';
 import { TrackerBar } from '@/components/tracker/TrackerBar';
 import { ManualEntryModal } from '@/components/tracker/ManualEntryModal';
@@ -216,14 +215,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <EditorialNav
-        isCloudConnected={tr.isCloudConnected}
-        onOpenPalette={() => setIsPaletteOpen(true)}
-        runningLabel={tr.runningEntry?.description || null}
-        elapsedSeconds={tr.elapsedSeconds}
-        onStopTimer={stop}
-      />
-
       <main className="flex-1 mx-auto w-full max-w-5xl px-5 sm:px-8 py-8 sm:py-12 space-y-10">
         <section className="space-y-4">
           <div className="flex items-baseline justify-between">
