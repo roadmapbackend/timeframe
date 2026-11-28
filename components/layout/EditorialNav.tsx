@@ -108,14 +108,15 @@ export function EditorialNav({
       <div className="no-print h-16 shrink-0" aria-hidden="true" />
 
       <div className="no-print fixed top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
-        {/* Main Morphing Navigation Pill (always dead-center) */}
-        <nav
-          aria-label="Primary"
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          onFocus={handleMouseEnter}
-          className={`pointer-events-auto relative overflow-hidden border border-foreground/12 bg-card/70 dark:bg-[#141210]/85 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.55)] transition-[width,height,border-radius,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${pillWidth} ${pillHeight} ${pillRadius}`}
-        >
+        <div className="relative">
+          {/* Main Morphing Navigation Pill (always dead-center) */}
+          <nav
+            aria-label="Primary"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onFocus={handleMouseEnter}
+            className={`pointer-events-auto relative overflow-hidden border border-foreground/12 bg-card/70 dark:bg-[#141210]/85 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.55)] transition-[width,height,border-radius,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${pillWidth} ${pillHeight} ${pillRadius}`}
+          >
           {/* Liquid glass top sheen (light mode only) */}
           <span
             aria-hidden="true"
@@ -202,30 +203,35 @@ export function EditorialNav({
               )}
             </div>
           </div>
-        </nav>
-      </div>
+          </nav>
 
-      {/* Separate Floating Timer Pill anchored top-right */}
-      {isRunning && (
-        <div className="no-print fixed top-4 right-4 sm:right-8 z-40 h-[38px] px-3 rounded-full border border-saffron/40 bg-card/75 dark:bg-[#141210]/90 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.55)] flex items-center gap-2.5 text-xs md:text-sm font-mono text-foreground whitespace-nowrap">
-          <span
-            className="w-2 h-2 rounded-full bg-saffron animate-pulse shrink-0"
-            aria-hidden="true"
-          />
-          <span className="tabular-nums font-medium">
-            {formatDuration(elapsedSeconds)}
-          </span>
-          <button
-            type="button"
-            onClick={onStopTimer}
-            aria-label={`Stop ${runningLabel}`}
-            title={`Stop "${runningLabel}"`}
-            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron text-saffron-foreground hover:opacity-90 transition-opacity cursor-pointer"
-          >
-            <Square className="w-2.5 h-2.5 fill-current" aria-hidden="true" />
-          </button>
+          {/* Separate Floating Timer Pill anchored 10px to the right of the navbar */}
+          {isRunning && (
+            <div
+              className={`pointer-events-auto absolute top-1/2 -translate-y-1/2 left-[calc(100%+10px)] h-[38px] px-3 rounded-full border border-saffron/40 bg-card/75 dark:bg-[#141210]/90 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.55)] flex items-center gap-2.5 text-xs md:text-sm font-mono text-foreground whitespace-nowrap transition-opacity duration-200 ${
+                isExpanded ? 'max-sm:opacity-0 max-sm:pointer-events-none' : 'opacity-100'
+              }`}
+            >
+              <span
+                className="w-2 h-2 rounded-full bg-saffron animate-pulse shrink-0"
+                aria-hidden="true"
+              />
+              <span className="tabular-nums font-medium">
+                {formatDuration(elapsedSeconds)}
+              </span>
+              <button
+                type="button"
+                onClick={onStopTimer}
+                aria-label={`Stop ${runningLabel}`}
+                title={`Stop "${runningLabel}"`}
+                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron text-saffron-foreground hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                <Square className="w-2.5 h-2.5 fill-current" aria-hidden="true" />
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </>
   );
 }
