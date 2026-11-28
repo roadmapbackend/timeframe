@@ -16,7 +16,7 @@ interface EditorialNavProps {
   onStopTimer?: () => void;
 }
 
-/* Fixed-position Apple/OriginOS-style morphing liquid-glass pill (1s hover linger, zero page shift). */
+/* Fixed-position Apple/OriginOS-style morphing nav pill + separate floating timer pill. */
 export function EditorialNav({
   isCloudConnected: propCloudConnected,
   runningLabel: propRunningLabel,
@@ -34,6 +34,7 @@ export function EditorialNav({
       : timeEntries.runningEntry?.description || null;
   const elapsedSeconds = propElapsedSeconds ?? timeEntries.elapsedSeconds;
   const onStopTimer = propOnStopTimer ?? (() => timeEntries.stopTimer());
+
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -90,19 +91,14 @@ export function EditorialNav({
     { label: 'Review', href: '/review' },
   ];
 
+  const currentLabel =
+    links.find((l) => l.href === pathname)?.label || 'Today';
+
   const isRunning = Boolean(runningLabel && onStopTimer);
 
   if (pathname.startsWith('/login')) return null;
 
-  // Explicit dimensions so width, height, and border-radius interpolate smoothly
-  const pillWidth = isExpanded
-    ? isRunning
-      ? 'w-[min(94vw,620px)]'
-      : 'w-[min(94vw,490px)]'
-    : isRunning
-    ? 'w-[156px]'
-    : 'w-[108px]';
-
+  const pillWidth = isExpanded ? 'w-[min(90vw,460px)]' : 'w-[122px]';
   const pillHeight = isExpanded ? 'h-[48px]' : 'h-[38px]';
   const pillRadius = isExpanded ? 'rounded-[18px]' : 'rounded-[19px]';
 
@@ -111,7 +107,8 @@ export function EditorialNav({
       {/* Fixed height spacer so the page never shifts when the pill morphs */}
       <div className="no-print h-16 shrink-0" aria-hidden="true" />
 
-      <div className="no-print fixed top-4 inset-x-0 z-40 flex justify-center px-3 pointer-events-none">
+      <div className="no-print fixed top-4 inset-x-0 z-40 flex items-center justify-center gap-3 px-3 pointer-events-none">
+        {/* Main Morphing Navigation Pill */}
         <nav
           aria-label="Primary"
           onMouseEnter={handleMouseEnter}
@@ -119,13 +116,13 @@ export function EditorialNav({
           onFocus={handleMouseEnter}
           className={`pointer-events-auto relative overflow-hidden border border-foreground/12 bg-card/70 dark:bg-[#141210]/85 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.55)] transition-[width,height,border-radius,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${pillWidth} ${pillHeight} ${pillRadius}`}
         >
-          {/* Liquid glass top sheen (light mode only; dark mode stays smoked obsidian) */}
+          {/* Liquid glass top sheen (light mode only) */}
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/30 to-transparent dark:opacity-0"
           />
 
-          {/* Layer 1: Collapsed pill */}
+          {/* Layer 1: Collapsed pill showing current page */}
           <div
             aria-hidden={isExpanded}
             className={`absolute inset-0 flex items-center justify-center transition-[opacity,transform,filter] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
@@ -134,40 +131,18 @@ export function EditorialNav({
                 : 'opacity-100 scale-100 blur-0'
             }`}
           >
-            {isRunning ? (
-              <div className="flex items-center gap-2.5 text-xs md:text-sm font-mono text-foreground whitespace-nowrap">
-                <span
-                  className="w-2 h-2 rounded-full bg-saffron animate-pulse shrink-0"
-                  aria-hidden="true"
-                />
-                <span className="tabular-nums font-medium">
-                  {formatDuration(elapsedSeconds)}
-                </span>
-                <button
-                  type="button"
-                  tabIndex={isExpanded ? -1 : 0}
-                  onClick={onStopTimer}
-                  aria-label={`Stop ${runningLabel}`}
-                  title={`Stop "${runningLabel}"`}
-                  className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron text-saffron-foreground hover:opacity-90 transition-opacity cursor-pointer"
-                >
-                  <Square className="w-2.5 h-2.5 fill-current" aria-hidden="true" />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                tabIndex={isExpanded ? -1 : 0}
-                onClick={() => setIsExpanded(true)}
-                className="inline-flex items-center gap-2 text-xs md:text-sm font-medium text-foreground cursor-pointer px-2 whitespace-nowrap"
-              >
-                <span
-                  className="w-2 h-2 rounded-full bg-saffron shrink-0"
-                  aria-hidden="true"
-                />
-                <span>Tasks</span>
-              </button>
-            )}
+            <button
+              type="button"
+              tabIndex={isExpanded ? -1 : 0}
+              onClick={() => setIsExpanded(true)}
+              className="inline-flex items-center gap-2 text-xs md:text-sm font-medium text-foreground cursor-pointer px-2 whitespace-nowrap"
+            >
+              <span
+                className="w-2 h-2 rounded-full bg-saffron shrink-0"
+                aria-hidden="true"
+              />
+              <span>{currentLabel}</span>
+            </button>
           </div>
 
           {/* Layer 2: Expanded floating navbar */}
@@ -200,23 +175,6 @@ export function EditorialNav({
             </div>
 
             <div className="flex items-center gap-2.5 sm:gap-3">
-              {isRunning && (
-                <button
-                  type="button"
-                  tabIndex={isExpanded ? 0 : -1}
-                  onClick={onStopTimer}
-                  className="hidden sm:inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-saffron/40 bg-card/80 text-xs font-mono text-foreground hover:border-saffron transition-colors cursor-pointer"
-                  title={`Stop "${runningLabel}"`}
-                >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-saffron animate-pulse"
-                    aria-hidden="true"
-                  />
-                  <span className="tabular-nums">{formatDuration(elapsedSeconds)}</span>
-                  <Square className="w-2.5 h-2.5 fill-current text-saffron" aria-hidden="true" />
-                </button>
-              )}
-
               <button
                 type="button"
                 tabIndex={isExpanded ? 0 : -1}
@@ -245,6 +203,28 @@ export function EditorialNav({
             </div>
           </div>
         </nav>
+
+        {/* Separate Floating Timer Pill next to the navbar */}
+        {isRunning && (
+          <div className="pointer-events-auto h-[38px] px-3 rounded-full border border-saffron/40 bg-card/75 dark:bg-[#141210]/90 backdrop-blur-2xl shadow-[0_12px_36px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.55)] flex items-center gap-2.5 text-xs md:text-sm font-mono text-foreground whitespace-nowrap">
+            <span
+              className="w-2 h-2 rounded-full bg-saffron animate-pulse shrink-0"
+              aria-hidden="true"
+            />
+            <span className="tabular-nums font-medium">
+              {formatDuration(elapsedSeconds)}
+            </span>
+            <button
+              type="button"
+              onClick={onStopTimer}
+              aria-label={`Stop ${runningLabel}`}
+              title={`Stop "${runningLabel}"`}
+              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron text-saffron-foreground hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              <Square className="w-2.5 h-2.5 fill-current" aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
