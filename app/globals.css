@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --background: #e4e6eb;
-  --foreground: #141619;
-  --card: #f2f3f5;
-  --card-foreground: #141619;
-  --muted: #d6d9e0;
-  --muted-foreground: #555b66;
-  --border: color-mix(in oklab, #141619 13%, transparent);
+  --background: #cfd4dc;
+  --foreground: #121417;
+  --card: #dfe3e8;
+  --card-foreground: #121417;
+  --muted: #c2c8d1;
+  --muted-foreground: #464c56;
+  --border: color-mix(in oklab, #121417 16%, transparent);
   --saffron: #f97316;
   --saffron-foreground: #ffffff;
 }

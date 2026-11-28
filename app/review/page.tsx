@@ -6,11 +6,11 @@ import { useProjects } from '@/hooks/useProjects';
 import { useTasks } from '@/hooks/useTasks';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { formatReadableDuration, getLocalDayKey } from '@/lib/utils';
+import { STUDIO_PALETTE } from '@/lib/constants';
 import { ChevronLeft, ChevronRight, Download, Printer } from 'lucide-react';
 
 export default function WeeklyReviewPage() {
-  const { entries, runningEntry, elapsedSeconds, isCloudConnected, stopTimer } =
-    useTimeEntries();
+  const { entries } = useTimeEntries();
   const { projects } = useProjects();
   const { tasks } = useTasks();
   const [offset, setOffset] = useState(0);
@@ -110,41 +110,32 @@ export default function WeeklyReviewPage() {
   const billableSummary = useMemo(() => {
     const projectMap = new Map(projects.map((p) => [p.id, p]));
     let billableSeconds = 0;
-    let totalAmount = 0;
 
     summary.projectBreakdown.forEach((item) => {
       if (!item.projectId) return;
       const proj = projectMap.get(item.projectId);
       if (proj?.is_billable) {
         billableSeconds += item.seconds;
-        if (proj.hourly_rate) {
-          totalAmount += (item.seconds / 3600) * Number(proj.hourly_rate);
-        }
       }
     });
 
     return {
-      hours: (billableSeconds / 3600).toFixed(1),
-      amount: Math.round(totalAmount),
+      formatted: formatReadableDuration(billableSeconds),
       hasBillable: billableSeconds > 0,
     };
   }, [projects, summary.projectBreakdown]);
 
   return (
     <div className="min-h-screen flex flex-col">
-      <main className="flex-1 mx-auto w-full max-w-6xl px-5 sm:px-10 py-10 sm:py-16 space-y-12">
+      <main className="flex-1 mx-auto w-full max-w-5xl px-5 sm:px-8 py-8 sm:py-12 space-y-10">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <div className="space-y-4">
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground block">
-              ( Weekly review )
-            </span>
-
+          <div className="space-y-3">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setOffset((o) => o - 1)}
                 aria-label="Previous week"
-                className="no-print p-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 cursor-pointer"
+                className="no-print p-1.5 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-foreground/40 cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               </button>
@@ -156,18 +147,17 @@ export default function WeeklyReviewPage() {
                 onClick={() => setOffset((o) => Math.min(0, o + 1))}
                 disabled={offset >= 0}
                 aria-label="Next week"
-                className="no-print p-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 disabled:opacity-30 cursor-pointer"
+                className="no-print p-1.5 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-foreground/40 disabled:opacity-30 cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
 
-            <p className="font-mono text-xs text-muted-foreground">
-              {summary.totalHours}h total · {summary.activeDays} active days ·{' '}
+            <p className="font-mono text-xs md:text-sm text-muted-foreground">
+              {summary.totalSeconds > 0 ? formatReadableDuration(summary.totalSeconds) : '0m'} total ·{' '}
+              {summary.activeDays} active {summary.activeDays === 1 ? 'day' : 'days'} ·{' '}
               {summary.focusBlocksCount} focus blocks (90m+)
-              {billableSummary.hasBillable
-                ? ` · ${billableSummary.hours}h billable`
-                : ''}
+              {billableSummary.hasBillable ? ` · ${billableSummary.formatted} billable` : ''}
             </p>
           </div>
 
@@ -175,131 +165,130 @@ export default function WeeklyReviewPage() {
             <button
               type="button"
               onClick={handleExportCsv}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-border text-xs text-foreground hover:border-foreground/40 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card text-xs md:text-sm text-foreground hover:border-foreground/40 cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5" aria-hidden="true" />
+              <Download className="w-4 h-4" aria-hidden="true" />
               <span>Export CSV</span>
             </button>
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-saffron text-saffron-foreground text-xs font-medium hover:opacity-90 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-saffron text-saffron-foreground text-xs md:text-sm font-medium hover:opacity-90 cursor-pointer"
             >
-              <Printer className="w-3.5 h-3.5" aria-hidden="true" />
+              <Printer className="w-4 h-4" aria-hidden="true" />
               <span>Print report</span>
             </button>
           </div>
         </header>
 
-        {/* 01 Top Projects */}
-        <section className="border-t border-foreground/15 pt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-3">
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              ( 01 ) Top projects
-            </span>
-          </div>
-          <div className="lg:col-span-9">
-            {summary.projectBreakdown.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No time logged this week.</p>
-            ) : (
-              <div className="divide-y divide-border">
-                {summary.projectBreakdown.slice(0, 5).map((p) => (
-                  <div
-                    key={p.projectId || 'untagged'}
-                    className="flex items-center justify-between py-2.5 text-sm"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: p.color }}
-                        aria-hidden="true"
+        {/* Top Projects Card */}
+        <section className="rounded-xl border border-border bg-card text-card-foreground p-5 space-y-4 shadow-2xs">
+          <h2 className="font-mono text-[11px] md:text-xs uppercase tracking-[0.16em] text-muted-foreground">
+            Top projects
+          </h2>
+          {summary.projectBreakdown.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No time logged this week.</p>
+          ) : (
+            <div className="space-y-3">
+              {summary.projectBreakdown.slice(0, 5).map((p, idx) => {
+                const color =
+                  p.projectId && p.color !== '#a1a1aa'
+                    ? p.color
+                    : STUDIO_PALETTE[idx % STUDIO_PALETTE.length].hex;
+                return (
+                  <div key={p.projectId || 'untagged'} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm md:text-base">
+                      <span className="flex items-center gap-2.5">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ backgroundColor: color }}
+                          aria-hidden="true"
+                        />
+                        <span className="font-medium text-foreground">{p.name}</span>
+                      </span>
+                      <span className="font-mono text-xs md:text-sm text-muted-foreground">
+                        {formatReadableDuration(p.seconds)} ({p.percentage}%)
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.max(4, p.percentage)}%`,
+                          backgroundColor: color,
+                        }}
                       />
-                      <span className="font-medium text-foreground">{p.name}</span>
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {p.hours}h ({p.percentage}%)
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Overruns & Untracked Weekdays Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <section className="rounded-xl border border-border bg-card text-card-foreground p-5 space-y-3 shadow-2xs">
+            <h2 className="font-mono text-[11px] md:text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Estimate overruns
+            </h2>
+            {overruns.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No task estimate overruns recorded.
+              </p>
+            ) : (
+              <div className="divide-y divide-border/70">
+                {overruns.slice(0, 4).map((o) => (
+                  <div
+                    key={o.title}
+                    className="flex items-center justify-between py-2.5 text-sm md:text-base"
+                  >
+                    <span className="truncate pr-3 text-foreground">{o.title}</span>
+                    <span className="font-mono text-xs md:text-sm text-saffron shrink-0">
+                      {formatReadableDuration(o.actual)} /{' '}
+                      {formatReadableDuration(o.estimate)} est
                     </span>
                   </div>
                 ))}
               </div>
             )}
-          </div>
-        </section>
+          </section>
 
-        {/* 02 Overruns & Untracked Weekdays */}
-        <section className="border-t border-foreground/15 pt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-3">
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              ( 02 ) Gaps & overruns
-            </span>
-          </div>
-          <div className="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-3">
-              <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                Estimate overruns
-              </h2>
-              {overruns.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No task estimate overruns recorded.
-                </p>
-              ) : (
-                <div className="divide-y divide-border">
-                  {overruns.slice(0, 4).map((o) => (
-                    <div
-                      key={o.title}
-                      className="flex items-center justify-between py-2 text-sm"
-                    >
-                      <span className="truncate pr-3 text-foreground">{o.title}</span>
-                      <span className="font-mono text-xs text-saffron shrink-0">
-                        {formatReadableDuration(o.actual)} /{' '}
-                        {formatReadableDuration(o.estimate)} est
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          <section className="rounded-xl border border-border bg-card text-card-foreground p-5 space-y-3 shadow-2xs">
+            <h2 className="font-mono text-[11px] md:text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Untracked weekdays
+            </h2>
+            {untrackedWeekdays.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                All weekdays so far have logged entries.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {untrackedWeekdays.map((d) => (
+                  <span
+                    key={d}
+                    className="px-3 py-1 rounded-full text-xs md:text-sm font-mono border border-dashed border-foreground/25 text-muted-foreground"
+                  >
+                    {d}
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
 
-            <div className="space-y-3">
-              <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                Untracked weekdays
-              </h2>
-              {untrackedWeekdays.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  All weekdays so far have logged entries.
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {untrackedWeekdays.map((d) => (
-                    <span
-                      key={d}
-                      className="px-2.5 py-1 rounded-full text-xs font-mono border border-dashed border-foreground/25 text-muted-foreground"
-                    >
-                      {d}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* 03 Reflection Notes */}
-        <section className="border-t border-foreground/15 pt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-3">
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              ( 03 ) Weekly notes
-            </span>
-          </div>
-          <div className="lg:col-span-9">
-            <textarea
-              rows={4}
-              value={notes}
-              onChange={(e) => handleNotesChange(e.target.value)}
-              placeholder="What moved the needle this week? What needs adjusting next week?"
-              className="w-full text-sm leading-relaxed py-2 border-b border-foreground/20 focus:border-saffron bg-transparent focus:outline-none text-foreground placeholder:text-muted-foreground/60 resize-y"
-            />
-          </div>
+        {/* Reflection Notes Card */}
+        <section className="rounded-xl border border-border bg-card text-card-foreground p-5 space-y-3 shadow-2xs">
+          <h2 className="font-mono text-[11px] md:text-xs uppercase tracking-[0.16em] text-muted-foreground">
+            Weekly notes
+          </h2>
+          <textarea
+            rows={4}
+            value={notes}
+            onChange={(e) => handleNotesChange(e.target.value)}
+            placeholder="What moved the needle this week? What needs adjusting next week?"
+            className="w-full text-sm md:text-base leading-relaxed py-2 border-b border-foreground/20 focus:border-saffron bg-transparent focus:outline-none text-foreground placeholder:text-muted-foreground/60 resize-y"
+          />
         </section>
       </main>
     </div>
