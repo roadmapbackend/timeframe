@@ -15,10 +15,9 @@ interface EditorialNavProps {
   onStopTimer?: () => void;
 }
 
-/* Floating editorial navigation bar with omnipresent mini-timer, links, and theme toggle. */
+/* Floating liquid-glass navigation bar with rounded corners. */
 export function EditorialNav({
   isCloudConnected,
-  onOpenPalette,
   runningLabel,
   elapsedSeconds = 0,
   onStopTimer,
@@ -64,36 +63,9 @@ export function EditorialNav({
   return (
     <nav
       aria-label="Primary"
-      className="no-print mx-auto w-full max-w-6xl px-5 sm:px-10 pt-6 pb-4 flex flex-wrap items-center justify-between gap-y-3"
+      className="no-print sticky top-4 z-40 mx-auto w-[calc(100%-2rem)] max-w-5xl mt-4 px-5 py-2.5 rounded-2xl border border-foreground/10 bg-card/65 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)] flex flex-wrap items-center justify-between gap-y-2"
     >
-      {/* Brand mark + optional running mini-timer */}
-      <div className="flex items-center gap-3">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 font-display text-base md:text-lg font-semibold tracking-tight text-foreground hover:opacity-80 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
-        >
-          <span
-            className="w-2.5 h-2.5 rounded-full bg-saffron shrink-0"
-            aria-hidden="true"
-          />
-          <span>Timeframe</span>
-        </Link>
-
-        {runningLabel && onStopTimer && (
-          <button
-            type="button"
-            onClick={onStopTimer}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-saffron/40 bg-card text-xs md:text-sm font-mono text-foreground hover:border-saffron transition-colors cursor-pointer"
-            title={`Stop "${runningLabel}"`}
-          >
-            <span className="w-2 h-2 rounded-full bg-saffron animate-pulse" aria-hidden="true" />
-            <span className="tabular-nums">{formatDuration(elapsedSeconds)}</span>
-            <Square className="w-3 h-3 fill-current text-saffron" aria-hidden="true" />
-          </button>
-        )}
-      </div>
-
-      {/* Plain text links */}
+      {/* Navigation links */}
       <div className="flex items-center gap-5 sm:gap-7 text-xs sm:text-sm md:text-base">
         {links.map((item) => {
           const isActive = pathname === item.href;
@@ -101,9 +73,9 @@ export function EditorialNav({
             <Link
               key={item.href}
               href={item.href}
-              className={`transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-saffron ${
+              className={`px-2 py-1 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron ${
                 isActive
-                  ? 'text-foreground font-semibold underline decoration-saffron decoration-2 underline-offset-8'
+                  ? 'text-foreground font-semibold bg-foreground/8'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -113,31 +85,20 @@ export function EditorialNav({
         })}
       </div>
 
-      {/* Right utilities */}
+      {/* Right utilities + optional running mini-timer */}
       <div className="flex items-center gap-3">
-        {onOpenPalette && (
+        {runningLabel && onStopTimer && (
           <button
             type="button"
-            onClick={onOpenPalette}
-            className="hidden sm:inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
-            title="Command palette (⌘K)"
+            onClick={onStopTimer}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-saffron/40 bg-card/80 text-xs md:text-sm font-mono text-foreground hover:border-saffron transition-colors cursor-pointer"
+            title={`Stop "${runningLabel}"`}
           >
-            <span>⌘K</span>
+            <span className="w-2 h-2 rounded-full bg-saffron animate-pulse" aria-hidden="true" />
+            <span className="tabular-nums">{formatDuration(elapsedSeconds)}</span>
+            <Square className="w-3 h-3 fill-current text-saffron" aria-hidden="true" />
           </button>
         )}
-
-        <span
-          className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground"
-          title={isCloudConnected ? 'Synced with Supabase' : 'Stored locally'}
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              isCloudConnected ? 'bg-emerald-500' : 'bg-muted-foreground/50'
-            }`}
-            aria-hidden="true"
-          />
-          <span>{isCloudConnected ? 'Synced' : 'Local'}</span>
-        </span>
 
         <button
           type="button"
@@ -156,7 +117,7 @@ export function EditorialNav({
           <button
             type="button"
             onClick={handleSignOut}
-            className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
+            className="font-mono text-[11px] md:text-xs uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
           >
             Sign out
           </button>

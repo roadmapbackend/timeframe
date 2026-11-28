@@ -43,10 +43,6 @@ export default function AnalyticsPage() {
       <main className="flex-1 mx-auto w-full max-w-6xl px-5 sm:px-10 py-10 sm:py-16 space-y-12">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-4">
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground block">
-              ( Analytics )
-            </span>
-
             <div className="flex items-center gap-3">
               <button
                 type="button"
