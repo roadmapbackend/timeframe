@@ -77,25 +77,38 @@ export function CalendarHistory({
 
   return (
     <section className="space-y-4">
-      <button
-        type="button"
-        onClick={() => setIsOpen((v) => !v)}
-        aria-expanded={isOpen}
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-      >
-        <Calendar className="w-4 h-4" aria-hidden="true" />
-        <span>
-          Calendar{pastDayCount > 0 ? ` · ${pastDayCount} past ${pastDayCount === 1 ? 'day' : 'days'}` : ''}
-        </span>
-        {isOpen ? (
-          <ChevronDown className="w-4 h-4" aria-hidden="true" />
-        ) : (
-          <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        )}
-      </button>
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={() => setIsOpen((v) => !v)}
+          aria-expanded={isOpen}
+          className={`inline-flex items-center gap-2 rounded-full border border-foreground/12 bg-card/75 backdrop-blur-xl px-4 py-2 text-xs md:text-sm font-medium text-foreground shadow-[0_6px_24px_rgb(0,0,0,0.06)] dark:shadow-[0_6px_24px_rgb(0,0,0,0.35)] hover:border-foreground/25 transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] cursor-pointer ${
+            isOpen ? 'border-saffron/40 scale-100' : 'scale-[0.98] hover:scale-100'
+          }`}
+        >
+          <Calendar className="w-4 h-4 text-saffron" aria-hidden="true" />
+          <span>
+            Calendar{pastDayCount > 0 ? ` · ${pastDayCount} past ${pastDayCount === 1 ? 'day' : 'days'}` : ''}
+          </span>
+          <ChevronDown
+            className={`w-4 h-4 text-muted-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+              isOpen ? 'rotate-180' : 'rotate-0'
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
 
-      {isOpen && (
-        <div className="rounded-xl border border-border bg-card text-card-foreground p-5 grid grid-cols-1 md:grid-cols-12 gap-6 shadow-2xs">
+      <div
+        aria-hidden={!isOpen}
+        className={`grid transition-[grid-template-rows,opacity,transform,filter] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          isOpen
+            ? 'grid-rows-[1fr] opacity-100 scale-100 blur-0'
+            : 'grid-rows-[0fr] opacity-0 scale-[0.97] blur-[4px] pointer-events-none'
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="rounded-2xl border border-border bg-card/85 backdrop-blur-xl text-card-foreground p-5 grid grid-cols-1 md:grid-cols-12 gap-6 shadow-[0_12px_36px_rgb(0,0,0,0.06)] dark:shadow-[0_12px_36px_rgb(0,0,0,0.4)]">
           {/* Left: Compact month grid */}
           <div className="md:col-span-5 space-y-3">
             <div className="flex items-center justify-between">
@@ -239,8 +252,9 @@ export function CalendarHistory({
               </div>
             )}
           </div>
+          </div>
         </div>
-      )}
+      </div>
     </section>
   );
 }
